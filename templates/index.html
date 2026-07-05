@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Assistant</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F7F5F1;
+    --bg-panel:#FFFFFF;
+    --border:#E7E3DA;
+    --border-soft:#EEEBE3;
+    --text:#2B2924;
+    --text-dim:#8A8579;
+    --text-faint:#B5AFA1;
+    --accent:#C2410C;
+    --accent-soft:#FBEAE0;
+    --user-bubble:#EFEBE2;
+    --radius:14px;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:'Inter', -apple-system, sans-serif;
+    display:flex;
+    flex-direction:column;
+    min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  /* ---------- Header ---------- */
+  header{
+    padding:16px 24px;
+    display:flex;
+    align-items:center;
+    gap:10px;
+    flex-shrink:0;
+    border-bottom:1px solid var(--border-soft);
+    background:var(--bg);
+  }
+  .mark{
+    width:26px;height:26px;
+    border-radius:7px;
+    background:var(--accent);
+    display:flex;align-items:center;justify-content:center;
+    flex-shrink:0;
+  }
+  .mark svg{width:14px;height:14px;}
+  header h1{
+    font-size:14.5px;
+    font-weight:600;
+    margin:0;
+    letter-spacing:-0.01em;
+  }
+  header .sub{
+    font-size:12px;
+    color:var(--text-faint);
+  }
+  .status{
+    margin-left:auto;
+    display:flex; align-items:center; gap:6px;
+    font-size:12px;
+    color:var(--text-faint);
+  }
+  .dot{width:6px;height:6px;border-radius:50%;background:#7AA874;}
+
+  /* ---------- Chat area ---------- */
+  #chat-scroll{
+    flex:1;
+    overflow-y:auto;
+  }
+  #chat{
+    max-width:720px;
+    margin:0 auto;
+    padding:40px 24px 24px;
+    display:flex;
+    flex-direction:column;
+    gap:28px;
+  }
+
+  .empty-state{
+    text-align:center;
+    margin-top:12vh;
+    animation:fadeIn 0.5s ease;
+  }
+  @keyframes fadeIn{ from{opacity:0;} to{opacity:1;} }
+  .empty-state .mark-lg{
+    width:44px;height:44px;
+    border-radius:12px;
+    background:var(--accent);
+    display:flex;align-items:center;justify-content:center;
+    margin:0 auto 18px;
+  }
+  .empty-state .mark-lg svg{ width:24px; height:24px; }
+  .empty-state h2{
+    font-family:'Source Serif 4', serif;
+    font-weight:600;
+    font-size:22px;
+    margin:0 0 6px;
+    color:var(--text);
+  }
+  .empty-state p{
+    font-size:13.5px;
+    color:var(--text-dim);
+    margin:0;
+    max-width:360px;
+    margin:0 auto;
+  }
+  .suggestions{
+    display:flex;
+    flex-wrap:wrap;
+    justify-content:center;
+    gap:8px;
+    margin-top:22px;
+  }
+  .suggestion-chip{
+    font-size:12.5px;
+    padding:8px 14px;
+    border:1px solid var(--border);
+    border-radius:20px;
+    background:var(--bg-panel);
+    color:var(--text-dim);
+    cursor:pointer;
+    transition:border-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
+  }
+  .suggestion-chip:hover{
+    border-color:var(--accent);
+    color:var(--accent);
+  }
+  .suggestion-chip:active{ transform:scale(0.97); }
+
+  .row{
+    display:flex;
+    gap:12px;
+    animation:rise 0.3s ease both;
+  }
+  @keyframes rise{
+    from{opacity:0; transform:translateY(6px);}
+    to{opacity:1; transform:translateY(0);}
+  }
+  .row.user{ justify-content:flex-end; }
+
+  .avatar{
+    width:24px;height:24px;flex-shrink:0;
+    border-radius:6px;
+    background:var(--accent);
+    display:flex;align-items:center;justify-content:center;
+    margin-top:2px;
+  }
+  .avatar svg{width:13px;height:13px;}
+
+  .bubble{
+    max-width:82%;
+    font-size:14.5px;
+    line-height:1.65;
+  }
+  .row.assistant .bubble{
+    color:var(--text);
+    padding-top:1px;
+  }
+  .row.user .bubble{
+    background:var(--user-bubble);
+    padding:11px 15px;
+    border-radius:var(--radius);
+    border-top-right-radius:4px;
+    color:var(--text);
+  }
+  .bubble p{margin:0 0 10px;}
+  .bubble p:last-child{margin-bottom:0;}
+  .bubble code{
+    font-family:ui-monospace,'SF Mono',monospace;
+    background:var(--border-soft);
+    padding:1.5px 5px;
+    border-radius:4px;
+    font-size:0.9em;
+  }
+  .bubble strong{ font-weight:600; }
+
+  /* ---------- typing indicator ---------- */
+  .typing{
+    display:flex; gap:4px; padding:6px 0;
+  }
+  .typing span{
+    width:5px;height:5px;border-radius:50%;
+    background:var(--text-faint);
+    animation:blink 1.2s infinite;
+  }
+  .typing span:nth-child(2){animation-delay:0.15s;}
+  .typing span:nth-child(3){animation-delay:0.3s;}
+  @keyframes blink{
+    0%,80%,100%{opacity:0.3; transform:translateY(0);}
+    40%{opacity:1; transform:translateY(-2px);}
+  }
+
+  /* ---------- Sources: quiet citation strip ---------- */
+  .sources-wrap{
+    margin-top:12px;
+  }
+  .sources-strip{
+    display:flex;
+    flex-wrap:wrap;
+    gap:6px;
+  }
+  .source-pill{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    font-size:12px;
+    padding:6px 10px;
+    background:var(--bg-panel);
+    border:1px solid var(--border);
+    border-radius:8px;
+    color:var(--text-dim);
+    max-width:260px;
+    cursor:default;
+    opacity:0;
+    animation:fadeUp 0.35s ease forwards;
+    transition:border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+  .source-pill:hover{
+    border-color:var(--accent);
+    box-shadow:0 2px 8px rgba(194,65,12,0.08);
+  }
+  @keyframes fadeUp{
+    from{opacity:0; transform:translateY(4px);}
+    to{opacity:1; transform:translateY(0);}
+  }
+  .source-pill .n{
+    flex-shrink:0;
+    width:16px;height:16px;
+    border-radius:4px;
+    background:var(--accent-soft);
+    color:var(--accent);
+    font-size:10px;
+    font-weight:600;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .source-pill .title{
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+    color:var(--text);
+    font-weight:500;
+  }
+  .source-pill .pct{
+    color:var(--text-faint);
+    flex-shrink:0;
+  }
+
+  /* expandable snippet on click */
+  .source-detail{
+    display:none;
+    margin-top:8px;
+    padding:10px 12px;
+    background:var(--bg-panel);
+    border:1px solid var(--border-soft);
+    border-left:2px solid var(--accent);
+    border-radius:6px;
+    font-size:12.5px;
+    color:var(--text-dim);
+    line-height:1.55;
+  }
+  .source-detail.open{ display:block; animation:fadeIn 0.2s ease; }
+
+  /* ---------- Composer ---------- */
+  #composer-wrap{
+    padding:14px 24px 22px;
+    flex-shrink:0;
+    background:var(--bg);
+  }
+  #composer{
+    max-width:720px;
+    margin:0 auto;
+    display:flex;
+    flex-direction:column;
+    background:var(--bg-panel);
+    border:1px solid var(--border);
+    border-radius:16px;
+    padding:10px 10px 10px 18px;
+    box-shadow:0 1px 2px rgba(0,0,0,0.02);
+    transition:border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+  #composer:focus-within{
+    border-color:#D8CFC0;
+    box-shadow:0 2px 10px rgba(0,0,0,0.05);
+  }
+  #composer-input-row{
+    display:flex;
+    align-items:flex-end;
+    gap:8px;
+  }
+  #composer-tools-row{
+    display:flex;
+    align-items:center;
+    padding:6px 0 2px;
+    margin-top:2px;
+    border-top:1px solid var(--border-soft);
+  }
+
+  /* ---------- Index / vector-store selector ---------- */
+  .index-picker{
+    position:relative;
+  }
+  .index-picker-btn{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    font-size:12px;
+    font-weight:500;
+    color:var(--text-dim);
+    background:var(--border-soft);
+    border:1px solid transparent;
+    border-radius:8px;
+    padding:6px 10px 6px 8px;
+    cursor:pointer;
+    transition:background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  }
+  .index-picker-btn:hover{
+    background:var(--accent-soft);
+    color:var(--accent);
+  }
+  .index-picker-btn .db-dot{
+    width:6px;height:6px;
+    border-radius:50%;
+    background:var(--accent);
+    flex-shrink:0;
+  }
+  .index-picker-btn svg{
+    width:11px;height:11px;
+    flex-shrink:0;
+    transition:transform 0.15s ease;
+  }
+  .index-picker.open .index-picker-btn svg{ transform:rotate(180deg); }
+  .index-picker.open .index-picker-btn{
+    background:var(--accent-soft);
+    color:var(--accent);
+  }
+
+  .index-menu{
+    position:absolute;
+    bottom:calc(100% + 8px);
+    left:0;
+    min-width:240px;
+    background:var(--bg-panel);
+    border:1px solid var(--border);
+    border-radius:12px;
+    box-shadow:0 12px 32px rgba(43,41,36,0.12);
+    padding:6px;
+    display:none;
+    z-index:20;
+  }
+  .index-menu.open{
+    display:block;
+    animation:menuIn 0.15s ease;
+  }
+  @keyframes menuIn{
+    from{opacity:0; transform:translateY(4px);}
+    to{opacity:1; transform:translateY(0);}
+  }
+  .index-menu-label{
+    font-size:10.5px;
+    text-transform:uppercase;
+    letter-spacing:0.06em;
+    color:var(--text-faint);
+    padding:8px 10px 6px;
+  }
+  .index-option{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:9px 10px;
+    border-radius:8px;
+    cursor:pointer;
+    transition:background 0.12s ease;
+  }
+  .index-option:hover{ background:var(--border-soft); }
+  .index-option.selected{ background:var(--accent-soft); }
+  .index-option .icon{
+    width:26px;height:26px;
+    border-radius:7px;
+    background:var(--border-soft);
+    display:flex;align-items:center;justify-content:center;
+    flex-shrink:0;
+    font-size:11px;
+    font-weight:600;
+    color:var(--text-dim);
+  }
+  .index-option.selected .icon{
+    background:var(--accent);
+    color:#fff;
+  }
+  .index-option .meta{ flex:1; min-width:0; }
+  .index-option .name{
+    font-size:13px;
+    font-weight:500;
+    color:var(--text);
+  }
+  .index-option .desc{
+    font-size:11.5px;
+    color:var(--text-faint);
+    margin-top:1px;
+  }
+  .index-option .check{
+    width:14px;height:14px;
+    flex-shrink:0;
+    color:var(--accent);
+    opacity:0;
+  }
+  .index-option.selected .check{ opacity:1; }
+  #msg-input{
+    flex:1;
+    background:none;
+    border:none;
+    outline:none;
+    resize:none;
+    color:var(--text);
+    font-family:'Inter',sans-serif;
+    font-size:14.5px;
+    line-height:1.5;
+    max-height:160px;
+    padding:8px 0;
+  }
+  #msg-input::placeholder{ color:var(--text-faint); }
+  #send-btn{
+    flex-shrink:0;
+    width:34px;height:34px;
+    border-radius:10px;
+    border:none;
+    background:var(--accent);
+    color:#fff;
+    display:flex;align-items:center;justify-content:center;
+    cursor:pointer;
+    transition:background 0.15s ease, transform 0.1s ease, opacity 0.15s ease;
+  }
+  #send-btn:hover{ background:#A8390A; }
+  #send-btn:active{ transform:scale(0.92); }
+  #send-btn:disabled{ opacity:0.3; cursor:not-allowed; }
+  #send-btn svg{ width:15px; height:15px; }
+
+  .hint{
+    text-align:center;
+    font-size:11px;
+    color:var(--text-faint);
+    margin-top:10px;
+  }
+
+  @media (max-width:600px){
+    .bubble{max-width:90%;}
+    header h1{font-size:14px;}
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    *{animation-duration:0.01ms !important; animation-iteration-count:1 !important; transition-duration:0.01ms !important;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="mark">
+    <svg viewBox="0 0 24 24" fill="none"><path d="M12 3L14.5 9.5L21 12L14.5 14.5L12 21L9.5 14.5L3 12L9.5 9.5L12 3Z" fill="white"/></svg>
+  </div>
+  <div>
+    <h1>Assistant</h1>
+  </div>
+  <div class="status"><span class="dot"></span> ready</div>
+</header>
+
+<div id="chat-scroll">
+  <div id="chat">
+    <div class="empty-state" id="empty-state">
+      <div class="mark-lg">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M12 3L14.5 9.5L21 12L14.5 14.5L12 21L9.5 14.5L3 12L9.5 9.5L12 3Z" fill="white"/></svg>
+      </div>
+      <h2>How can I help?</h2>
+      <p>Ask a question and I'll answer using what's in your knowledge base, with sources included.</p>
+      <div class="suggestions">
+        <div class="suggestion-chip">Summarize the latest report</div>
+        <div class="suggestion-chip">What changed this quarter?</div>
+        <div class="suggestion-chip">Find the onboarding policy</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="composer-wrap">
+  <div id="composer">
+    <div id="composer-input-row">
+      <textarea id="msg-input" placeholder="Message the assistant…" rows="1"></textarea>
+      <button id="send-btn" aria-label="Send message">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 19V5M12 5L6 11M12 5L18 11" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+    </div>
+
+    <div id="composer-tools-row">
+      <div class="index-picker" id="index-picker">
+        <button type="button" class="index-picker-btn" id="index-picker-btn">
+          <span class="db-dot"></span>
+          <span id="index-picker-label">FAISS · Flat</span>
+          <svg viewBox="0 0 24 24" fill="none"><path d="M6 9L12 15L18 9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+
+        <div class="index-menu" id="index-menu">
+          <div class="index-menu-label">Vector index</div>
+
+          <div class="index-option selected" data-value="faiss-flat">
+            <div class="icon">F</div>
+            <div class="meta">
+              <div class="name">FAISS · Flat</div>
+              <div class="desc">Exact search — default, no approximation</div>
+            </div>
+            <svg class="check" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17L4 12" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+
+          <div class="index-option" data-value="faiss-hnsw">
+            <div class="icon">F</div>
+            <div class="meta">
+              <div class="name">FAISS · HNSW</div>
+              <div class="desc">Graph-based ANN — fast, high recall</div>
+            </div>
+            <svg class="check" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17L4 12" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+
+          <div class="index-option" data-value="faiss-ivf">
+            <div class="icon">F</div>
+            <div class="meta">
+              <div class="name">FAISS · IVF</div>
+              <div class="desc">Clustered search — scales to large indexes</div>
+            </div>
+            <svg class="check" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17L4 12" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+
+          <div class="index-option" data-value="pinecone">
+            <div class="icon">P</div>
+            <div class="meta">
+              <div class="name">Pinecone</div>
+              <div class="desc">Managed vector database</div>
+            </div>
+            <svg class="check" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17L4 12" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="hint">Enter to send · Shift+Enter for a new line</div>
+</div>
+
+<script>
+/* =========================================================================
+   FRONTEND ONLY — wire this up to your Flask backend.
+
+   Expected backend endpoint:  POST /chat
+   Request JSON body:
+     {
+       "message": "the user's question",
+       "history": [{"role": "user"|"assistant", "content": "..."}, ...],
+       "vector_store": "faiss-flat" | "faiss-hnsw" | "faiss-ivf" | "pinecone"
+     }
+   "vector_store" reflects whatever the user picked in the dropdown above the
+   input box, so your route can branch to the matching retriever. Default is
+   "faiss-flat".
+
+   Expected JSON response:
+     {
+       "answer": "the assistant's answer text",
+       "sources": [
+         { "title": "doc_name.pdf, p.4", "snippet": "retrieved chunk text…", "score": 0.87 },
+         ...
+       ]
+     }
+
+   "sources" is optional — omit it or send an empty list if a reply has none.
+   ========================================================================= */
+
+const CHAT_ENDPOINT = "/chat";
+
+const chatEl = document.getElementById('chat');
+const emptyState = document.getElementById('empty-state');
+const scrollEl = document.getElementById('chat-scroll');
+const input = document.getElementById('msg-input');
+const sendBtn = document.getElementById('send-btn');
+
+let history = [];
+let isStreaming = false;
+let selectedIndex = 'faiss-flat';
+
+// ---------- Vector index picker ----------
+const indexPicker = document.getElementById('index-picker');
+const indexPickerBtn = document.getElementById('index-picker-btn');
+const indexPickerLabel = document.getElementById('index-picker-label');
+const indexMenu = document.getElementById('index-menu');
+const indexOptions = document.querySelectorAll('.index-option');
+
+indexPickerBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  const willOpen = !indexMenu.classList.contains('open');
+  indexMenu.classList.toggle('open', willOpen);
+  indexPicker.classList.toggle('open', willOpen);
+});
+
+indexOptions.forEach(opt => {
+  opt.addEventListener('click', () => {
+    indexOptions.forEach(o => o.classList.remove('selected'));
+    opt.classList.add('selected');
+    selectedIndex = opt.dataset.value;
+    indexPickerLabel.textContent = opt.querySelector('.name').textContent;
+    indexMenu.classList.remove('open');
+    indexPicker.classList.remove('open');
+  });
+});
+
+document.addEventListener('click', (e) => {
+  if (!indexPicker.contains(e.target)) {
+    indexMenu.classList.remove('open');
+    indexPicker.classList.remove('open');
+  }
+});
+
+input.addEventListener('input', () => {
+  input.style.height = 'auto';
+  input.style.height = Math.min(input.scrollHeight, 160) + 'px';
+});
+
+input.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    send();
+  }
+});
+sendBtn.addEventListener('click', send);
+
+document.querySelectorAll('.suggestion-chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    input.value = chip.textContent;
+    send();
+  });
+});
+
+function scrollToBottom(){
+  scrollEl.scrollTo({ top: scrollEl.scrollHeight, behavior: 'smooth' });
+}
+
+function escapeHtml(str){
+  const d = document.createElement('div');
+  d.innerText = str;
+  return d.innerHTML;
+}
+
+function renderText(text){
+  const escaped = escapeHtml(text);
+  const withCode = escaped.replace(/`([^`]+)`/g, '<code>$1</code>');
+  const withBold = withCode.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  return withBold.split(/\n{2,}/).map(p => `<p>${p.replace(/\n/g,'<br>')}</p>`).join('');
+}
+
+function addRow(role){
+  emptyState.style.display = 'none';
+  const row = document.createElement('div');
+  row.className = `row ${role}`;
+
+  if (role === 'assistant'){
+    const avatar = document.createElement('div');
+    avatar.className = 'avatar';
+    avatar.innerHTML = '<svg viewBox="0 0 24 24" fill="none"><path d="M12 3L14.5 9.5L21 12L14.5 14.5L12 21L9.5 14.5L3 12L9.5 9.5L12 3Z" fill="white"/></svg>';
+    row.appendChild(avatar);
+  }
+
+  const bubble = document.createElement('div');
+  bubble.className = 'bubble';
+  row.appendChild(bubble);
+
+  chatEl.appendChild(row);
+  return { row, bubble };
+}
+
+function addTypingIndicator(){
+  const { row, bubble } = addRow('assistant');
+  bubble.innerHTML = '<div class="typing"><span></span><span></span><span></span></div>';
+  scrollToBottom();
+  return row;
+}
+
+function renderSources(sources){
+  if (!sources || sources.length === 0) return null;
+  const wrap = document.createElement('div');
+  wrap.className = 'sources-wrap';
+
+  const strip = document.createElement('div');
+  strip.className = 'sources-strip';
+  wrap.appendChild(strip);
+
+  sources.forEach((s, i) => {
+    const pill = document.createElement('div');
+    pill.className = 'source-pill';
+    pill.style.animationDelay = `${i * 70}ms`;
+    const scoreText = (typeof s.score === 'number') ? `${(s.score * 100).toFixed(0)}%` : '';
+    pill.innerHTML = `
+      <span class="n">${i + 1}</span>
+      <span class="title">${escapeHtml(s.title || 'Untitled source')}</span>
+      ${scoreText ? `<span class="pct">${scoreText}</span>` : ''}
+    `;
+    strip.appendChild(pill);
+
+    const detail = document.createElement('div');
+    detail.className = 'source-detail';
+    detail.textContent = s.snippet || '';
+    wrap.appendChild(detail);
+
+    pill.addEventListener('click', () => detail.classList.toggle('open'));
+  });
+
+  return wrap;
+}
+
+async function send(){
+  const text = input.value.trim();
+  if (!text || isStreaming) return;
+
+  input.value = '';
+  input.style.height = 'auto';
+  isStreaming = true;
+  sendBtn.disabled = true;
+
+  const { bubble: userBubble } = addRow('user');
+  userBubble.innerHTML = renderText(text);
+  history.push({ role: 'user', content: text });
+  scrollToBottom();
+
+  const typingRow = addTypingIndicator();
+
+  try {
+    const res = await fetch(CHAT_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: text, history, vector_store: selectedIndex })
+    });
+
+    if (!res.ok) throw new Error(`Server responded ${res.status}`);
+    const data = await res.json();
+
+    typingRow.remove();
+    const { row, bubble } = addRow('assistant');
+    bubble.innerHTML = renderText(data.answer ?? "I didn't get a usable response.");
+
+    const sourcesEl = renderSources(data.sources);
+    if (sourcesEl) row.after(sourcesEl);
+
+    history.push({ role: 'assistant', content: data.answer ?? '' });
+  } catch (err) {
+    typingRow.remove();
+    const { bubble } = addRow('assistant');
+    bubble.innerHTML = renderText(`Something went wrong reaching the server: ${err.message}`);
+  } finally {
+    isStreaming = false;
+    sendBtn.disabled = false;
+    scrollToBottom();
+    input.focus();
+  }
+}
+</script>
+</body>
+</html>
