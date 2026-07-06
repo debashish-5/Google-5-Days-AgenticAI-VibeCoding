@@ -30,36 +30,41 @@ import os
 api_key = "pcsk_3Z18nd_New68WcRtj3Uybw1EaFKUvrPfg8Tp2AtbcD8Gdovfv6kPsnM7kkzJqt1Dqdaec8"
 
 os.environ['PINECONE_API_KEY'] = api_key
+
+def pinecone_retrive(query):
 # Initialize the Groq LLM
-llm = ChatGroq(
-    model="llama-3.1-8b-instant",
-    api_key="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"
-)
+    llm = ChatGroq(
+        model="llama-3.1-8b-instant",
+        api_key="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"
+    )
 
 
-# To this:
-index_name = "google-5days-vibecoding"
+    # To this:
+    index_name = "google-5days-vibecoding"
 
 
-embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
+    embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
 
-pinecone_db = PineconeVectorStore(
-    pinecone_api_key=api_key,
-    index_name=index_name,
-    embedding=embeddings,
-    # embeddding_dimension=384
-)
-retriever = pinecone_db.as_retriever(search_kwargs={"k": 3})
+    pinecone_db = PineconeVectorStore(
+        pinecone_api_key=api_key,
+        index_name=index_name,
+        embedding=embeddings,
+        # embeddding_dimension=384
+    )
+    retriever = pinecone_db.as_retriever(search_kwargs={"k": 3})
 
-chat_history = []
+    chat_history = []
 
-qa = ConversationalRetrievalChain.from_llm(
-    llm = llm,
-    retriever = retriever,
-    return_source_documents=True,
-    condense_question_prompt=prompt,
-)
+    qa = ConversationalRetrievalChain.from_llm(
+        llm = llm,
+        retriever = retriever,
+        return_source_documents=True,
+        condense_question_prompt=prompt,
+    )
+    return qa.invoke({"question":query,"chat_history":chat_history})
 
+
+def hnsw(query):
 
 
 app = Flask(__name__)
