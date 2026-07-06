@@ -64,7 +64,7 @@ def pinecone_retrive(query):
     return qa.invoke({"question":query,"chat_history":chat_history})
 
 
-def hnsw(query):
+
 
 
 app = Flask(__name__)
