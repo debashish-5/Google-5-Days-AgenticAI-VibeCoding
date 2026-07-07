@@ -36,7 +36,7 @@ prompt = PromptTemplate.from_template(
 
 from pinecone import Pinecone
 import os
-api_key = "pcsk_3Z18nd_New68WcRtj3Uybw1EaFKUvrPfg8Tp2AtbcD8Gdovfv6kPsnM7kkzJqt1Dqdaec8"
+api_key = os.getenv("PINECONE_API_KEY")
 
 os.environ['PINECONE_API_KEY'] = api_key
 
@@ -44,7 +44,7 @@ def pinecone_retrive(query):
 # Initialize the Groq LLM
     llm = ChatGroq(
         model="llama-3.1-8b-instant",
-        api_key="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"
+        api_key=os.getenv("GROQ_API_KEY")
     )
 
 
@@ -78,7 +78,7 @@ from langchain_community.vectorstores import FAISS
 def hnsw_retrive(query):
     llm = ChatGroq(
         model="llama-3.1-8b-instant",
-        api_key="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"
+        api_key=os.getenv("GROQ_API_KEY")
     
     )
     # 1. Initialize the exact same embedding model used during saving
@@ -103,7 +103,7 @@ def hnsw_retrive(query):
 def pq_retrive(query):
     llm = ChatGroq(
         model="llama-3.1-8b-instant",
-        api_key="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"
+        api_key=os.getenv("GROQ_API_KEY")
     
     )
     # 1. Initialize the exact same embedding model used during saving
@@ -173,7 +173,7 @@ def tavily_search(query: str) -> str:
 
 llm = ChatGroq(
     model="llama-3.1-8b-instant",
-    api_key="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"
+    api_key=os.getenv("GROQ_API_KEY")
 )
 
 agent = create_agent(
