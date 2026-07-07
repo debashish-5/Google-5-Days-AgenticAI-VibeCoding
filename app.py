@@ -88,15 +88,16 @@ def hnsw_retrive(query):
     db = FAISS.load_local(folder_path="HNSW_index", embeddings=embeddings, allow_dangerous_deserialization=True)
     retriever = db.as_retriever(search_kwargs={"k": 3})
 
-    chat_history = []
+    # chat_history = []
 
-    qa = ConversationalRetrievalChain.from_llm(
-        llm = llm,
-        retriever = retriever,
-        return_source_documents=True,
-        condense_question_prompt=prompt,
-    )
-    return qa.invoke({"question":query,"chat_history":chat_history})
+    # qa = ConversationalRetrievalChain.from_llm(
+    #     llm = llm,
+    #     retriever = retriever,
+    #     return_source_documents=True,
+    #     condense_question_prompt=prompt,
+    # )
+    # return qa.invoke({"question":query,"chat_history":chat_history})
+    return retriever.get_relevant_documents(query)
 
 
 ## PQ
@@ -113,15 +114,15 @@ def pq_retrive(query):
     db = FAISS.load_local(folder_path="PQ_index", embeddings=embeddings, allow_dangerous_deserialization=True)
     retriever = db.as_retriever(search_kwargs={"k": 3})
 
-    chat_history = []
+    # chat_history = []
 
-    qa = ConversationalRetrievalChain.from_llm(
-        llm = llm,
-        retriever = retriever,
-        return_source_documents=True,
-        condense_question_prompt=prompt,
-    )
-    return qa.invoke({"question":query,"chat_history":chat_history})
+    # qa = ConversationalRetrievalChain.from_llm(
+    #     llm = llm,
+    #     retriever = retriever,
+    #     return_source_documents=True,
+    #     condense_question_prompt=prompt,
+    # )
+    return retriever.get_relevant_documents(query)
 
 
 
@@ -141,7 +142,7 @@ def tavily_search(query: str) -> str:
         "Content-Type": "application/json",
     }
     params = {
-        "api_key": tavily_api_key,
+        "api_key": os.getenv("TAVILY_API_KEY"),
         "query": query,
         "search_depth": "basic",
         "max_results": 3  # Tells the API to only fetch up to 3 results
@@ -193,6 +194,22 @@ app = Flask(__name__)
 @app.route('/')
 def home():
     return render_template('index.html')
+
+@app.route('/chat', methods=['POST'])
+def chat():
+    data = request.get_json()
+    user_query = data.get("message")  # Get the user query from the request
+    faiss_model = data.get("vectorstore")  # Get the selected vector store from the request
+    if not user_query or not faiss_model:
+        return jsonify({"error": "Missing user query or vector store selection"}), 400
+    if faiss_model == "hnsw":
+        results = agent.invoke({'messages': [{'role': 'user', 'content': hnsw_retrive(user_query)}]})
+    elif faiss_model == "pq":
+        results = agent.invoke({'messages': [{'role': 'user', 'content': pq_retrive(user_query)}]})
+    return jsonify({"response": results})  # Return the response as JSON
+
+    # Process the user query and faiss_model as needed
+    # ...
 
 if __name__  == "__main__":
     app.run(debug=True)
