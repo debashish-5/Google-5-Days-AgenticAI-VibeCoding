@@ -64,6 +64,56 @@ def pinecone_retrive(query):
     return qa.invoke({"question":query,"chat_history":chat_history})
 
 
+from langchain_community.vectorstores import FAISS
+##HNSW
+def hnsw_retrive(query):
+    llm = ChatGroq(
+        model="llama-3.1-8b-instant",
+        api_key="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"
+    
+    )
+    # 1. Initialize the exact same embedding model used during saving
+    embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
+    # 2. Load the index from your local folder
+    # Note: allow_dangerous_deserialization=True is REQUIRED for pickle loading
+    db = FAISS.load_local(folder_path="HNSW_index", embeddings=embeddings, allow_dangerous_deserialization=True)
+    retriever = db.as_retriever(search_kwargs={"k": 3})
+
+    chat_history = []
+
+    qa = ConversationalRetrievalChain.from_llm(
+        llm = llm,
+        retriever = retriever,
+        return_source_documents=True,
+        condense_question_prompt=prompt,
+    )
+    return qa.invoke({"question":query,"chat_history":chat_history})
+
+
+## PQ
+def pq_retrive(query):
+    llm = ChatGroq(
+        model="llama-3.1-8b-instant",
+        api_key="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"
+    
+    )
+    # 1. Initialize the exact same embedding model used during saving
+    embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
+    # 2. Load the index from your local folder
+    # Note: allow_dangerous_deserialization=True is REQUIRED for pickle loading
+    db = FAISS.load_local(folder_path="PQ_index", embeddings=embeddings, allow_dangerous_deserialization=True)
+    retriever = db.as_retriever(search_kwargs={"k": 3})
+
+    chat_history = []
+
+    qa = ConversationalRetrievalChain.from_llm(
+        llm = llm,
+        retriever = retriever,
+        return_source_documents=True,
+        condense_question_prompt=prompt,
+    )
+    return qa.invoke({"question":query,"chat_history":chat_history})
+
 
 
 
