@@ -7,9 +7,10 @@ from langchain_pinecone import PineconeVectorStore
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_core.tools import tool
 from langchain_community.tools import DuckDuckGoSearchResults
-from langchain_core.agents import create_agent
+from langchain.agents import create_agent
 from dotenv import load_dotenv
 import requests
+import os
 
 load_dotenv()
 
@@ -178,9 +179,8 @@ llm = ChatGroq(
 )
 
 agent = create_agent(
-    llm = llm,
+    model = llm,
     tools = [tavily_search],
-    agent_type = "zero-shot-react-description",
     verbose = True
 )
 
