@@ -503,36 +503,45 @@
       <div class="index-picker" id="index-picker">
         <button type="button" class="index-picker-btn" id="index-picker-btn">
           <span class="db-dot"></span>
-          <span id="index-picker-label">FAISS · Flat</span>
+          <span id="index-picker-label">HNSW Index</span>
           <svg viewBox="0 0 24 24" fill="none"><path d="M6 9L12 15L18 9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </button>
 
         <div class="index-menu" id="index-menu">
           <div class="index-menu-label">Vector index</div>
 
-          <div class="index-option selected" data-value="faiss-flat">
-            <div class="icon">F</div>
+          <div class="index-option selected" data-value="faiss-hnsw">
+            <div class="icon">H</div>
             <div class="meta">
-              <div class="name">FAISS · Flat</div>
-              <div class="desc">Exact search — default, no approximation</div>
-            </div>
-            <svg class="check" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17L4 12" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          </div>
-
-          <div class="index-option" data-value="faiss-hnsw">
-            <div class="icon">F</div>
-            <div class="meta">
-              <div class="name">FAISS · HNSW</div>
-              <div class="desc">Graph-based ANN — fast, high recall</div>
+              <div class="name">HNSW Index</div>
+              <div class="desc">Uses the HNSW FAISS folder in this workspace</div>
             </div>
             <svg class="check" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17L4 12" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </div>
 
           <div class="index-option" data-value="faiss-ivf">
-            <div class="icon">F</div>
+            <div class="icon">I</div>
             <div class="meta">
-              <div class="name">FAISS · IVF</div>
-              <div class="desc">Clustered search — scales to large indexes</div>
+              <div class="name">IVF Index</div>
+              <div class="desc">Uses the IVF FAISS folder in this workspace</div>
+            </div>
+            <svg class="check" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17L4 12" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+
+          <div class="index-option" data-value="faiss-ivfpq">
+            <div class="icon">V</div>
+            <div class="meta">
+              <div class="name">IVF-PQ Index</div>
+              <div class="desc">Uses the IVFPQ FAISS folder in this workspace</div>
+            </div>
+            <svg class="check" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17L4 12" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+
+          <div class="index-option" data-value="faiss-pq">
+            <div class="icon">P</div>
+            <div class="meta">
+              <div class="name">PQ Index</div>
+              <div class="desc">Uses the PQ FAISS folder in this workspace</div>
             </div>
             <svg class="check" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17L4 12" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </div>
@@ -541,7 +550,7 @@
             <div class="icon">P</div>
             <div class="meta">
               <div class="name">Pinecone</div>
-              <div class="desc">Managed vector database</div>
+              <div class="desc">Falls back to the HNSW local index when unavailable</div>
             </div>
             <svg class="check" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17L4 12" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </div>
@@ -589,7 +598,7 @@ const sendBtn = document.getElementById('send-btn');
 
 let history = [];
 let isStreaming = false;
-let selectedIndex = 'faiss-flat';
+let selectedIndex = 'faiss-hnsw';
 
 // ---------- Vector index picker ----------
 const indexPicker = document.getElementById('index-picker');

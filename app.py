@@ -1,4 +1,4 @@
-from langchain_core.prompts import PromptTemplate
+﻿from langchain_core.prompts import PromptTemplate
 from langchain_groq import ChatGroq
 from langchain_classic.chains import ConversationalRetrievalChain
 from flask import Flask, request, jsonify,render_template
@@ -12,6 +12,7 @@ from dotenv import load_dotenv
 from openai import embeddings
 import requests
 import os
+from langsmith import traceable
 
 load_dotenv()
 
@@ -224,6 +225,14 @@ def chat():
         results = agent.invoke({'messages': [{'role': 'user', 'content': hnsw_retrive(user_query)}]})
     elif faiss_model == "faiss-pq":
         results = agent.invoke({'messages': [{'role': 'user', 'content': pq_retrive(user_query)}]})
+    return jsonify({"response": results})  # Return the response as JSON
+
+    # Process the user query and faiss_model as needed
+    # ...
+
+if __name__  == "__main__":
+    app.run(debug=True)
+ent': pq_retrive(user_query)}]})
     return jsonify({"response": results})  # Return the response as JSON
 
     # Process the user query and faiss_model as needed
