@@ -9,6 +9,7 @@ from langchain_core.tools import tool
 from langchain_community.tools import DuckDuckGoSearchResults
 from langchain.agents import create_agent
 from dotenv import load_dotenv
+from openai import embeddings
 import requests
 import os
 
@@ -75,56 +76,74 @@ def pinecone_retrive(query):
 
 
 from langchain_community.vectorstores import FAISS
-##HNSW
-def hnsw_retrive(query):
-    llm = ChatGroq(
-        model="llama-3.1-8b-instant",
-        api_key=os.getenv("GROQ_API_KEY")
+class retriever:
+    def __init__(self,llm = None, embeddings = None):
+        self.llm = ChatGroq(
+            model="llama-3.1-8b-instant",
+            api_key=os.getenv("GROQ_API_KEY")
+        
+        )
+        # 1. Initialize the exact same embedding model used during saving
+        self.embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
+    ##HNSW
+    def hnsw_retrive(query):
+        llm = ChatGroq(
+            model="llama-3.1-8b-instant",
+            api_key=os.getenv("GROQ_API_KEY")
+        
+        )
+        # 1. Initialize the exact same embedding model used during saving
+        embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
+        # 2. Load the index from your local folder
+        # Note: allow_dangerous_deserialization=True is REQUIRED for pickle loading
+        db = FAISS.load_local(folder_path="HNSW_index", embeddings=embeddings, allow_dangerous_deserialization=True)
+        retriever = db.as_retriever(search_kwargs={"k": 3})
+
+        # chat_history = []
+
+        # qa = ConversationalRetrievalChain.from_llm(
+        #     llm = llm,
+        #     retriever = retriever,
+        #     return_source_documents=True,
+        #     condense_question_prompt=prompt,
+        # )
+        # return qa.invoke({"question":query,"chat_history":chat_history})
+        return retriever.get_relevant_documents(query)
+
+
+    ## PQ
+    def pq_retrive(self,query):
+        llm = ChatGroq(
+            model="llama-3.1-8b-instant",
+            api_key=os.getenv("GROQ_API_KEY")
+        
+        )
+        # 1. Initialize the exact same embedding model used during saving
+        embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
+        # 2. Load the index from your local folder
+        # Note: allow_dangerous_deserialization=True is REQUIRED for pickle loading
+        db = FAISS.load_local(folder_path="PQ_index", embeddings=self.embeddings, allow_dangerous_deserialization=True)
+        retriever = db.as_retriever(search_kwargs={"k": 3})
+
+        # chat_history = []
+
+        # qa = ConversationalRetrievalChain.from_llm(
+        #     llm = llm,
+        #     retriever = retriever,
+        #     return_source_documents=True,
+        #     condense_question_prompt=prompt,
+        # )
+        return retriever.get_relevant_documents(query)
+    def ivf_retriever(self,query):
+        db = FAISS.load_local(folder_path="IVF_faiss",embeddings=self.embeddings,allow_dangerous_deserialization=True)
+        retriver = db.as_retriever(search_kwargs={"k": 3})
+        return retriver._get_relevant_documents(query)
+
+    def ivfpo_retriever(self,query):
+        db = FAISS.load_local(folder_path="IVF_PQ_faiss",embeddings=self.embeddings,allow_dangerous_deserialization=True)
+        retriever = db.as_retriever(search_kwargs={"k": 3})
+        return retriever.get_relevant_documents(query)
     
-    )
-    # 1. Initialize the exact same embedding model used during saving
-    embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
-    # 2. Load the index from your local folder
-    # Note: allow_dangerous_deserialization=True is REQUIRED for pickle loading
-    db = FAISS.load_local(folder_path="HNSW_index", embeddings=embeddings, allow_dangerous_deserialization=True)
-    retriever = db.as_retriever(search_kwargs={"k": 3})
-
-    # chat_history = []
-
-    # qa = ConversationalRetrievalChain.from_llm(
-    #     llm = llm,
-    #     retriever = retriever,
-    #     return_source_documents=True,
-    #     condense_question_prompt=prompt,
-    # )
-    # return qa.invoke({"question":query,"chat_history":chat_history})
-    return retriever.get_relevant_documents(query)
-
-
-## PQ
-def pq_retrive(query):
-    llm = ChatGroq(
-        model="llama-3.1-8b-instant",
-        api_key=os.getenv("GROQ_API_KEY")
-    
-    )
-    # 1. Initialize the exact same embedding model used during saving
-    embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
-    # 2. Load the index from your local folder
-    # Note: allow_dangerous_deserialization=True is REQUIRED for pickle loading
-    db = FAISS.load_local(folder_path="PQ_index", embeddings=embeddings, allow_dangerous_deserialization=True)
-    retriever = db.as_retriever(search_kwargs={"k": 3})
-
-    # chat_history = []
-
-    # qa = ConversationalRetrievalChain.from_llm(
-    #     llm = llm,
-    #     retriever = retriever,
-    #     return_source_documents=True,
-    #     condense_question_prompt=prompt,
-    # )
-    return retriever.get_relevant_documents(query)
-
 
 
 @tool
