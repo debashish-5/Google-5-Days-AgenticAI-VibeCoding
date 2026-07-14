@@ -226,7 +226,7 @@ def chat():
     elif faiss_model == "faiss-pq":
         results = agent.invoke({'messages': [{'role': 'user', 'content': pq_retrive(user_query)}]})
     return jsonify({"response": results})  # Return the response as JSON
-
+    
     # Process the user query and faiss_model as needed
     # ...
 
