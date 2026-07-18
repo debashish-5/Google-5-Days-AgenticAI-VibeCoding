@@ -168,8 +168,7 @@ class retriever_x_llm:
         )
         # 1. Initialize the exact same embedding model used during saving
         self.embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
-        self.condense_question_prompt = PromptTemplate.from_template(
-            """
+        self.condense_question_prompt = """
             ## A Professional Experienced AgenticAi/AI Teacher
             You are Teacher from Google 5 Days VibeCodes. You are a helpful assistant that helps students learn coding and programming concepts. You will answer the questions based on the context provided.
             - Ask the user for clarification if the question is ambiguous or unclear.
@@ -178,14 +177,10 @@ class retriever_x_llm:
             - Encourage the user to ask follow-up questions if they need further clarification.
             - Retrieve relevant information from the context to support your answers.
             - Your answers should be accurate, informative, and easy to understand related to retrieved context.
-            
-            ## Use this chat_history to answer the question. If the context is not enough, you can answer based on your knowledge. If you don't know the answer, just say "I don't know". Do not try to make up an answer.
-            {chat_history}
-            
-            ## User Question: {question}
-            ## Assistant:"""
+            - You can use tool for better more accurate result.
+            """
     ##HNSW
-    def hnsw_retrive(query):
+    def hnsw_retrive(self,query):
         llm = ChatGroq(
             model="llama-3.1-8b-instant",
             api_key=os.getenv("GROQ_API_KEY")
@@ -208,8 +203,18 @@ class retriever_x_llm:
         #     condense_question_prompt=prompt,
         # )
         # return qa.invoke({"question":query,"chat_history":chat_history})
-        return retriever.get_relevant_documents(query)
+        brainer = create_retriever_tool(
+            retriever,
+            name="HNSW Retriver",
+            description="Searches internal documents. Use this as your primary source for internal info."
+        )
+        agent = create_agent(
+            model = llm,
+            tools=[tavily_search],
+            system_prompt=self.condense_question_prompt
+        )
 
+        return agent.invoke({'messages':query})
 
 
     ## PQ
@@ -234,35 +239,56 @@ class retriever_x_llm:
         #     return_source_documents=True,
         #     condense_question_prompt=prompt,
         # )
-        chat_history = []
-        qa = ConversationalRetrievalChain.from_llm(
-            llm = self.llm,
-            retriever = retriever,
-            return_source_documents = True,
-            condense_question_prompt = self.condense_question_prompt
+        brainer = create_retriever_tool(
+            retriever,
+            name = "PQ_faiss Retriever",
+            description="Searches internal documents. Use this as your primary source for internal info."
+
         )
+        agent = create_agent(
+            model = self.llm,
+            tools=[tavily_search],
+            system_prompt=self.condense_question_prompt
+
+        )
+        return agent.invoke({'messages':query})
+
     def ivf_retriever(self,query):
         db = FAISS.load_local(folder_path="IVF_faiss",embeddings=self.embeddings,allow_dangerous_deserialization=True)
-        retriver = db.as_retriever(search_kwargs={"k": 3})
-        chat_history = []
-        qa = ConversationalRetrievalChain.from_llm(
-            llm = self.llm,
-            retriever = retriever,
-            return_source_documents = True,
-            condense_question_prompt = self.condense_question_prompt
+        retriever = db.as_retriever(search_kwargs={"k": 3})
+        brainer = create_retriever_tool(
+            retriever,
+            name = "IVF_faiss Retriever",
+            description="Searches internal documents. Use this as your primary source for internal info."
+
         )
+        agent = create_agent(
+            model = self.llm,
+            tools=[tavily_search],
+            system_prompt=self.condense_question_prompt
+
+        )
+        return agent.invoke({'messages':query})
         
 
     def ivfpq_retriever(self,query):
         db = FAISS.load_local(folder_path="IVF_PQ_faiss",embeddings=self.embeddings,allow_dangerous_deserialization=True)
         retriever = db.as_retriever(search_kwargs={"k": 3})
         chat_history = []
-        qa = ConversationalRetrievalChain.from_llm(
-            llm = self.llm,
-            retriever = retriever,
-            return_source_documents = True,
-            condense_question_prompt = self.condense_question_prompt
+        brainer = create_retriever_tool(
+            retriever,
+            name = "IVFPQ_faiss Retriever",
+            description="Searches internal documents. Use this as your primary source for internal info."
+
         )
+        agent = create_agent(
+            model = self.llm,
+            tools=[tavily_search],
+            system_prompt=self.condense_question_prompt
+
+        )
+        return agent.invoke({'messages':query})
+        
         
     
     def hybrid_search(self,query):
