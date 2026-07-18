@@ -114,6 +114,132 @@ def pinecone_retrive(query):
 
 
 
+class retriever_x_llm:
+    def __init__(self,llm = None, embeddings = None):
+        self.llm = ChatGroq(
+            model="llama-3.1-8b-instant",
+            api_key=os.getenv("GROQ_API_KEY")
+        
+        )
+        # 1. Initialize the exact same embedding model used during saving
+        self.embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
+        self.condense_question_prompt = PromptTemplate.from_template(
+            """
+            ## A Professional Experienced AgenticAi/AI Teacher
+            You are Teacher from Google 5 Days VibeCodes. You are a helpful assistant that helps students learn coding and programming concepts. You will answer the questions based on the context provided.
+            - Ask the user for clarification if the question is ambiguous or unclear.
+            - Provide clear and concise explanations.
+            - Use examples and analogies to help explain complex concepts.
+            - Encourage the user to ask follow-up questions if they need further clarification.
+            - Retrieve relevant information from the context to support your answers.
+            - Your answers should be accurate, informative, and easy to understand related to retrieved context.
+            
+            ## Use this chat_history to answer the question. If the context is not enough, you can answer based on your knowledge. If you don't know the answer, just say "I don't know". Do not try to make up an answer.
+            {chat_history}
+            
+            ## User Question: {question}
+            ## Assistant:"""
+    ##HNSW
+    def hnsw_retrive(query):
+        llm = ChatGroq(
+            model="llama-3.1-8b-instant",
+            api_key=os.getenv("GROQ_API_KEY")
+        
+        )
+        # 1. Initialize the exact same embedding model used during saving
+        # use self.embeddings for consistency
+        embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
+        # 2. Load the index from your local folder
+        # Note: allow_dangerous_deserialization=True is REQUIRED for pickle loading
+        db = FAISS.load_local(folder_path="HNSW_index", embeddings=self.embeddings, allow_dangerous_deserialization=True)
+        retriever = db.as_retriever(search_kwargs={"k": 3})
+
+        # chat_history = []
+
+        # qa = ConversationalRetrievalChain.from_llm(
+        #     llm = llm,
+        #     retriever = retriever,
+        #     return_source_documents=True,
+        #     condense_question_prompt=prompt,
+        # )
+        # return qa.invoke({"question":query,"chat_history":chat_history})
+        return retriever.get_relevant_documents(query)
+
+
+
+    ## PQ
+    def pq_retrive(self,query):
+        llm = ChatGroq(
+            model="llama-3.1-8b-instant",
+            api_key=os.getenv("GROQ_API_KEY")
+        
+        )
+        # 1. Initialize the exact same embedding model used during saving
+        # use self.embeddings initialized in constructor
+        # 2. Load the index from your local folder
+        # Note: allow_dangerous_deserialization=True is REQUIRED for pickle loading
+        db = FAISS.load_local(folder_path="PQ_index", embeddings=self.embeddings, allow_dangerous_deserialization=True)
+        retriever = db.as_retriever(search_kwargs={"k": 3})
+
+        # chat_history = []
+
+        # qa = ConversationalRetrievalChain.from_llm(
+        #     llm = llm,
+        #     retriever = retriever,
+        #     return_source_documents=True,
+        #     condense_question_prompt=prompt,
+        # )
+        chat_history = []
+        qa = ConversationalRetrievalChain.from_llm(
+            llm = self.llm,
+            retriever = retriever,
+            return_source_documents = True,
+            condense_question_prompt = self.condense_question_prompt
+        )
+    def ivf_retriever(self,query):
+        db = FAISS.load_local(folder_path="IVF_faiss",embeddings=self.embeddings,allow_dangerous_deserialization=True)
+        retriver = db.as_retriever(search_kwargs={"k": 3})
+        chat_history = []
+        qa = ConversationalRetrievalChain.from_llm(
+            llm = self.llm,
+            retriever = retriever,
+            return_source_documents = True,
+            condense_question_prompt = self.condense_question_prompt
+        )
+        
+
+    def ivfpq_retriever(self,query):
+        db = FAISS.load_local(folder_path="IVF_PQ_faiss",embeddings=self.embeddings,allow_dangerous_deserialization=True)
+        retriever = db.as_retriever(search_kwargs={"k": 3})
+        chat_history = []
+        qa = ConversationalRetrievalChain.from_llm(
+            llm = self.llm,
+            retriever = retriever,
+            return_source_documents = True,
+            condense_question_prompt = self.condense_question_prompt
+        )
+        
+    
+    def hybrid_search(self,query):
+        chat_history = []
+        qa = ConversationalRetrievalChain.from_llm(
+            llm = self.llm,
+            retriever = hybrid_retriever,
+            return_source_documents=True,
+            condense_question_prompt=self.condense_question_prompt,
+        )
+        try:
+            return qa.invoke({"question":query,"chat_history":chat_history})
+        except Exception as e:
+            return f"An error occurred during hybrid search: {str(e)}"
+        
+
+
+
+
+
+
+
 class retriever:
     def __init__(self,llm = None, embeddings = None):
         self.llm = ChatGroq(
@@ -150,6 +276,7 @@ class retriever:
         return retriever.get_relevant_documents(query)
 
 
+
     ## PQ
     def pq_retrive(self,query):
         llm = ChatGroq(
@@ -176,12 +303,14 @@ class retriever:
     def ivf_retriever(self,query):
         db = FAISS.load_local(folder_path="IVF_faiss",embeddings=self.embeddings,allow_dangerous_deserialization=True)
         retriver = db.as_retriever(search_kwargs={"k": 3})
+
         return retriver.get_relevant_documents(query)
 
     def ivfpq_retriever(self,query):
         db = FAISS.load_local(folder_path="IVF_PQ_faiss",embeddings=self.embeddings,allow_dangerous_deserialization=True)
         retriever = db.as_retriever(search_kwargs={"k": 3})
-        return retriever.get_relevant_documents(query)
+        chat_history = []
+        
     
     def hybrid_search(self,query):
         chat_history = []
@@ -191,10 +320,12 @@ class retriever:
             return_source_documents=True,
             condense_question_prompt=prompt,
         )
-        return qa.invoke({"question":query,"chat_history":chat_history})
-    
+        try:
+            return qa.invoke({"question":query,"chat_history":chat_history})
+        except Exception as e:
+            return f"An error occurred during hybrid search: {str(e)}"
         
-        
+
 
 
 @tool
