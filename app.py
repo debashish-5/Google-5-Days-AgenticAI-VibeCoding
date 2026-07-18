@@ -13,6 +13,44 @@ from openai import embeddings
 import requests
 import os
 from langsmith import traceable
+import numpy as np
+#keyword search
+from langchain_community.retrievers import BM25Retriever
+#Hybrid Search
+from langchain_classic.retrievers import EnsembleRetriever
+from langchain_community.vectorstores import FAISS
+from langchain_community.document_loaders import PyPDFDirectoryLoader
+from langchain_community.embeddings import HuggingFaceBgeEmbeddings
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from pinecone import Pinecone
+import os
+from langchain_classic.chains import ConversationalRetrievalChain
+from langchain_core.tools import tool
+
+
+splitter = RecursiveCharacterTextSplitter(chunk_size=1000,chunk_overlap=200)
+
+docs = PyPDFDirectoryLoader('documents/')
+documents = docs.load()
+embeddings = HuggingFaceBgeEmbeddings(model_name = "sentence-transformers/all-MiniLM-L6-v2")
+
+chunks = splitter.split_documents(documents)
+faiss_db = FAISS.from_documents(chunks,embeddings)
+faiss_retriever = faiss_db.as_retriever(search_kwargs={"k": 3}) ## Top 3 relevant documents will be retrieved for each query
+#bm25 retriever
+bm25_retriever = BM25Retriever.from_documents(chunks)
+bm25_retriever.k = 3  ## Top 3 relevant documents will be retrieved for each query
+
+#hybrid search
+hybrid_retriever = EnsembleRetriever(
+    retrievers= [
+        bm25_retriever,
+        faiss_retriever
+    ],
+    weights = [0.4,0.6]
+)
+
+
 
 load_dotenv()
 
@@ -37,8 +75,7 @@ prompt = PromptTemplate.from_template(
 
 )
 
-from pinecone import Pinecone
-import os
+
 api_key = os.getenv("PINECONE_API_KEY")
 
 os.environ['PINECONE_API_KEY'] = api_key
@@ -76,7 +113,7 @@ def pinecone_retrive(query):
     return qa.invoke({"question":query,"chat_history":chat_history})
 
 
-from langchain_community.vectorstores import FAISS
+
 class retriever:
     def __init__(self,llm = None, embeddings = None):
         self.llm = ChatGroq(
@@ -94,10 +131,11 @@ class retriever:
         
         )
         # 1. Initialize the exact same embedding model used during saving
+        # use self.embeddings for consistency
         embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
         # 2. Load the index from your local folder
         # Note: allow_dangerous_deserialization=True is REQUIRED for pickle loading
-        db = FAISS.load_local(folder_path="HNSW_index", embeddings=embeddings, allow_dangerous_deserialization=True)
+        db = FAISS.load_local(folder_path="HNSW_index", embeddings=self.embeddings, allow_dangerous_deserialization=True)
         retriever = db.as_retriever(search_kwargs={"k": 3})
 
         # chat_history = []
@@ -120,7 +158,7 @@ class retriever:
         
         )
         # 1. Initialize the exact same embedding model used during saving
-        embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
+        # use self.embeddings initialized in constructor
         # 2. Load the index from your local folder
         # Note: allow_dangerous_deserialization=True is REQUIRED for pickle loading
         db = FAISS.load_local(folder_path="PQ_index", embeddings=self.embeddings, allow_dangerous_deserialization=True)
@@ -138,13 +176,25 @@ class retriever:
     def ivf_retriever(self,query):
         db = FAISS.load_local(folder_path="IVF_faiss",embeddings=self.embeddings,allow_dangerous_deserialization=True)
         retriver = db.as_retriever(search_kwargs={"k": 3})
-        return retriver._get_relevant_documents(query)
+        return retriver.get_relevant_documents(query)
 
-    def ivfpo_retriever(self,query):
+    def ivfpq_retriever(self,query):
         db = FAISS.load_local(folder_path="IVF_PQ_faiss",embeddings=self.embeddings,allow_dangerous_deserialization=True)
         retriever = db.as_retriever(search_kwargs={"k": 3})
         return retriever.get_relevant_documents(query)
     
+    def hybrid_search(self,query):
+        chat_history = []
+        qa = ConversationalRetrievalChain.from_llm(
+            llm = self.llm,
+            retriever = hybrid_retriever,
+            return_source_documents=True,
+            condense_question_prompt=prompt,
+        )
+        return qa.invoke({"question":query,"chat_history":chat_history})
+    
+        
+        
 
 
 @tool
@@ -221,22 +271,19 @@ def chat():
     faiss_model = data.get("vectorstore")  # Get the selected vector store from the request
     if not user_query or not faiss_model:
         return jsonify({"error": "Missing user query or vector store selection"}), 400
-    if faiss_model == "faiss-hnsw":
-        results = agent.invoke({'messages': [{'role': 'user', 'content': hnsw_retrive(user_query)}]})
-    elif faiss_model == "faiss-pq":
-        results = agent.invoke({'messages': [{'role': 'user', 'content': pq_retrive(user_query)}]})
-    return jsonify({"response": results})  # Return the response as JSON
-    
-    # Process the user query and faiss_model as needed
-    # ...
+    try:
+        if faiss_model == "faiss-hnsw":
+            content = hnsw_retrive(user_query)
+        elif faiss_model == "faiss-pq":
+            content = pq_retrive(user_query)
+        else:
+            return jsonify({"error": "Unknown vector store selection"}), 400
 
-if __name__  == "__main__":
-    app.run(debug=True)
-ent': pq_retrive(user_query)}]})
-    return jsonify({"response": results})  # Return the response as JSON
+        results = agent.invoke({'messages': [{'role': 'user', 'content': content}]})
+        return jsonify({"response": results})  # Return the response as JSON
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
-    # Process the user query and faiss_model as needed
-    # ...
 
 if __name__  == "__main__":
     app.run(debug=True)
