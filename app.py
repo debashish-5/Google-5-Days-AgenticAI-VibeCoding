@@ -26,6 +26,7 @@ from pinecone import Pinecone
 import os
 from langchain_classic.chains import ConversationalRetrievalChain
 from langchain_core.tools import tool
+from langchain_core.tools.retriever import create_retriever_tool
 
 
 splitter = RecursiveCharacterTextSplitter(chunk_size=1000,chunk_overlap=200)
@@ -113,7 +114,51 @@ def pinecone_retrive(query):
     return qa.invoke({"question":query,"chat_history":chat_history})
 
 
-
+@tool
+def tavily_search(query: str) -> str:
+    """
+    ## Search the web using Tavily and return the results.
+    Use this tool to search the web for information related to the user's question. Return the search results as a string.
+    Give best result which is most relevant to the query. If no results are found, return "No results found."
+    Args:
+        query (str): The search query.
+    Returns:
+        str: The search results.
+    """
+    url = "https://api.tavily.com/search"
+    headers = {
+        "Content-Type": "application/json",
+    }
+    params = {
+        "api_key": os.getenv("TAVILY_API_KEY"),
+        "query": query,
+        "search_depth": "basic",
+        "max_results": 3  # Tells the API to only fetch up to 3 results
+    }
+    
+    try:
+        response = requests.post(url, headers=headers, json=params)
+        if response.status_code == 200:
+            data = response.json()
+            results = data.get("results", [])
+            
+            if not results:
+                return "No results found."
+                
+            # Take the first 3 results and format them into a single string
+            formatted_results = []
+            for item in results[:3]:
+                title = item.get("title", "No Title")
+                url_link = item.get("url", "No URL")
+                content = item.get("content", "")
+                
+                formatted_results.append(f"Title: {title}\nURL: {url_link}\nContent: {content}\n---")
+                
+            return "\n".join(formatted_results)
+            
+        return f"Error: API returned status code {response.status_code}"
+    except Exception as e:
+        return f"An error occurred: {str(e)}"
 class retriever_x_llm:
     def __init__(self,llm = None, embeddings = None):
         self.llm = ChatGroq(
@@ -309,70 +354,12 @@ class retriever:
     def ivfpq_retriever(self,query):
         db = FAISS.load_local(folder_path="IVF_PQ_faiss",embeddings=self.embeddings,allow_dangerous_deserialization=True)
         retriever = db.as_retriever(search_kwargs={"k": 3})
-        chat_history = []
-        
-    
-    def hybrid_search(self,query):
-        chat_history = []
-        qa = ConversationalRetrievalChain.from_llm(
-            llm = self.llm,
-            retriever = hybrid_retriever,
-            return_source_documents=True,
-            condense_question_prompt=prompt,
-        )
-        try:
-            return qa.invoke({"question":query,"chat_history":chat_history})
-        except Exception as e:
-            return f"An error occurred during hybrid search: {str(e)}"
+        return retriever.get_relevant_documents(query)
         
 
 
 
-@tool
-def tavily_search(query: str) -> str:
-    """
-    ## Search the web using Tavily and return the results.
-    Use this tool to search the web for information related to the user's question. Return the search results as a string.
-    Give best result which is most relevant to the query. If no results are found, return "No results found."
-    Args:
-        query (str): The search query.
-    Returns:
-        str: The search results.
-    """
-    url = "https://api.tavily.com/search"
-    headers = {
-        "Content-Type": "application/json",
-    }
-    params = {
-        "api_key": os.getenv("TAVILY_API_KEY"),
-        "query": query,
-        "search_depth": "basic",
-        "max_results": 3  # Tells the API to only fetch up to 3 results
-    }
-    
-    try:
-        response = requests.post(url, headers=headers, json=params)
-        if response.status_code == 200:
-            data = response.json()
-            results = data.get("results", [])
-            
-            if not results:
-                return "No results found."
-                
-            # Take the first 3 results and format them into a single string
-            formatted_results = []
-            for item in results[:3]:
-                title = item.get("title", "No Title")
-                url_link = item.get("url", "No URL")
-                content = item.get("content", "")
-                
-                formatted_results.append(f"Title: {title}\nURL: {url_link}\nContent: {content}\n---")
-                
-            return "\n".join(formatted_results)
-            
-        return f"Error: API returned status code {response.status_code}"
-    except Exception as e:
-        return f"An error occurred: {str(e)}"
+
 
 llm = ChatGroq(
     model="llama-3.1-8b-instant",
