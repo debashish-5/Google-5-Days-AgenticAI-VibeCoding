@@ -417,9 +417,9 @@ def chat():
         return jsonify({"error": "Missing user query or vector store selection"}), 400
     try:
         if faiss_model == "faiss-hnsw":
-            content = hnsw_retrive(user_query)
+            content = retriever_x_llm.hnsw_retrive(user_query)
         elif faiss_model == "faiss-pq":
-            content = pq_retrive(user_query)
+            content = retriever_x_llm.pq_retrive(user_query)
         else:
             return jsonify({"error": "Unknown vector store selection"}), 400
 
