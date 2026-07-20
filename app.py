@@ -359,7 +359,7 @@ class retriever:
         # use self.embeddings initialized in constructor
         # 2. Load the index from your local folder
         # Note: allow_dangerous_deserialization=True is REQUIRED for pickle loading
-        db = FAISS.load_local(folder_path="PQ_index", embeddings=self.embeddings, allow_dangerous_deserialization=True)
+        db = FAISS.load_local(folder_path="PQ_faiss", embeddings=self.embeddings, allow_dangerous_deserialization=True)
         retriever = db.as_retriever(search_kwargs={"k": 3})
 
         # chat_history = []
@@ -378,7 +378,7 @@ class retriever:
         return retriver.invoke(query)
 
     def ivfpq_retriever(self,query):
-        db = FAISS.load_local(folder_path="IVF_PQ_faiss",embeddings=self.embeddings,allow_dangerous_deserialization=True)
+        db = FAISS.load_local(folder_path="IVFPQ_faiss",embeddings=self.embeddings,allow_dangerous_deserialization=True)
         retriever = db.as_retriever(search_kwargs={"k": 3})
         return retriever.invoke(query)
         
