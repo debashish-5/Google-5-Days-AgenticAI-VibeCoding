@@ -9,7 +9,6 @@ from langchain_core.tools import tool
 from langchain_community.tools import DuckDuckGoSearchResults
 from langchain.agents import create_agent
 from dotenv import load_dotenv
-from openai import embeddings
 import requests
 import os
 from langsmith import traceable
@@ -29,14 +28,16 @@ from langchain_core.tools import tool
 from langchain_core.tools.retriever import create_retriever_tool
 
 
+load_dotenv()
+
 splitter = RecursiveCharacterTextSplitter(chunk_size=1000,chunk_overlap=200)
 
 docs = PyPDFDirectoryLoader('documents/')
 documents = docs.load()
-embeddings = HuggingFaceBgeEmbeddings(model_name = "sentence-transformers/all-MiniLM-L6-v2")
+Field_embeddings = HuggingFaceBgeEmbeddings(model_name = "sentence-transformers/all-MiniLM-L6-v2")
 
 chunks = splitter.split_documents(documents)
-faiss_db = FAISS.from_documents(chunks,embeddings)
+faiss_db = FAISS.from_documents(chunks,Field_embeddings)
 faiss_retriever = faiss_db.as_retriever(search_kwargs={"k": 3}) ## Top 3 relevant documents will be retrieved for each query
 #bm25 retriever
 bm25_retriever = BM25Retriever.from_documents(chunks)
