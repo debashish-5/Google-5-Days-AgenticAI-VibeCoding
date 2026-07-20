@@ -191,7 +191,7 @@ class retriever_x_llm:
         embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
         # 2. Load the index from your local folder
         # Note: allow_dangerous_deserialization=True is REQUIRED for pickle loading
-        db = FAISS.load_local(folder_path="HNSW_index", embeddings=self.embeddings, allow_dangerous_deserialization=True)
+        db = FAISS.load_local(folder_path="HNSW_faiss", embeddings=self.embeddings, allow_dangerous_deserialization=True)
         retriever = db.as_retriever(search_kwargs={"k": 3})
 
         # chat_history = []
@@ -210,7 +210,7 @@ class retriever_x_llm:
         )
         agent = create_agent(
             model = llm,
-            tools=[tavily_search],
+            tools=[brainer,tavily_search],
             system_prompt=self.condense_question_prompt
         )
 
@@ -228,7 +228,7 @@ class retriever_x_llm:
         # use self.embeddings initialized in constructor
         # 2. Load the index from your local folder
         # Note: allow_dangerous_deserialization=True is REQUIRED for pickle loading
-        db = FAISS.load_local(folder_path="PQ_index", embeddings=self.embeddings, allow_dangerous_deserialization=True)
+        db = FAISS.load_local(folder_path="PQ_faiss", embeddings=self.embeddings, allow_dangerous_deserialization=True)
         retriever = db.as_retriever(search_kwargs={"k": 3})
 
         # chat_history = []
@@ -247,7 +247,7 @@ class retriever_x_llm:
         )
         agent = create_agent(
             model = self.llm,
-            tools=[tavily_search],
+            tools=[brainer,tavily_search],
             system_prompt=self.condense_question_prompt
 
         )
@@ -264,7 +264,7 @@ class retriever_x_llm:
         )
         agent = create_agent(
             model = self.llm,
-            tools=[tavily_search],
+            tools=[brainer,tavily_search],
             system_prompt=self.condense_question_prompt
 
         )
@@ -272,7 +272,7 @@ class retriever_x_llm:
         
 
     def ivfpq_retriever(self,query):
-        db = FAISS.load_local(folder_path="IVF_PQ_faiss",embeddings=self.embeddings,allow_dangerous_deserialization=True)
+        db = FAISS.load_local(folder_path="IVFPQ_faiss",embeddings=self.embeddings,allow_dangerous_deserialization=True)
         retriever = db.as_retriever(search_kwargs={"k": 3})
         chat_history = []
         brainer = create_retriever_tool(
@@ -283,7 +283,7 @@ class retriever_x_llm:
         )
         agent = create_agent(
             model = self.llm,
-            tools=[tavily_search],
+            tools=[brainer,tavily_search],
             system_prompt=self.condense_question_prompt
 
         )
@@ -332,7 +332,7 @@ class retriever:
         embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
         # 2. Load the index from your local folder
         # Note: allow_dangerous_deserialization=True is REQUIRED for pickle loading
-        db = FAISS.load_local(folder_path="HNSW_index", embeddings=self.embeddings, allow_dangerous_deserialization=True)
+        db = FAISS.load_local(folder_path="HNSW_faiss", embeddings=self.embeddings, allow_dangerous_deserialization=True)
         retriever = db.as_retriever(search_kwargs={"k": 3})
 
         # chat_history = []
@@ -344,7 +344,7 @@ class retriever:
         #     condense_question_prompt=prompt,
         # )
         # return qa.invoke({"question":query,"chat_history":chat_history})
-        return retriever.get_relevant_documents(query)
+        return retriever.invoke(query)
 
 
 
@@ -370,17 +370,17 @@ class retriever:
         #     return_source_documents=True,
         #     condense_question_prompt=prompt,
         # )
-        return retriever.get_relevant_documents(query)
+        return retriever.invoke(query)
     def ivf_retriever(self,query):
         db = FAISS.load_local(folder_path="IVF_faiss",embeddings=self.embeddings,allow_dangerous_deserialization=True)
         retriver = db.as_retriever(search_kwargs={"k": 3})
 
-        return retriver.get_relevant_documents(query)
+        return retriver.invoke(query)
 
     def ivfpq_retriever(self,query):
         db = FAISS.load_local(folder_path="IVF_PQ_faiss",embeddings=self.embeddings,allow_dangerous_deserialization=True)
         retriever = db.as_retriever(search_kwargs={"k": 3})
-        return retriever.get_relevant_documents(query)
+        return retriever.invoke(query)
         
 
 
@@ -408,8 +408,13 @@ app = Flask(__name__)
 def home():
     return render_template('index.html')
 
+
+retriever_llm = retriever_x_llm()
+retriever = retriever()
 @app.route('/chat', methods=['POST'])
 def chat():
+
+
     data = request.get_json()
     user_query = data.get("message")  # Get the user query from the request
     faiss_model = data.get("vector_store")  # Get the selected vector store from the request
@@ -417,16 +422,17 @@ def chat():
         return jsonify({"error": "Missing user query or vector store selection"}), 400
     try:
         if faiss_model == "faiss-hnsw":
-            content = retriever_x_llm.hnsw_retrive(user_query)
+            result = retriever_llm.hnsw_retrive(user_query)
         elif faiss_model == "faiss-pq":
-            content = retriever_x_llm.pq_retrive(user_query)
+            result = retriever_llm.pq_retrive(user_query)
         else:
             return jsonify({"error": "Unknown vector store selection"}), 400
 
-        results = agent.invoke({'messages': [{'role': 'user', 'content': content}]})
-        return jsonify({"response": results})  # Return the response as JSON
+        answer = result['messages'][-1].content
+        return jsonify({"response": answer})  # Return the response as JSON
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
 
 
 if __name__  == "__main__":
