@@ -412,7 +412,7 @@ def home():
 def chat():
     data = request.get_json()
     user_query = data.get("message")  # Get the user query from the request
-    faiss_model = data.get("vectorstore")  # Get the selected vector store from the request
+    faiss_model = data.get("vector_store")  # Get the selected vector store from the request
     if not user_query or not faiss_model:
         return jsonify({"error": "Missing user query or vector store selection"}), 400
     try:
