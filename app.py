@@ -317,7 +317,7 @@ class retriever_x_llm:
 
 
 
-
+traceable(name = "retriever")
 class retriever:
     def __init__(self,llm = None, embeddings = None):
         self.llm = ChatGroq(
@@ -419,6 +419,7 @@ def home():
 retriever_llm = retriever_x_llm()
 retriever = retriever()
 @app.route('/chat', methods=['POST'])
+@traceable(name = "chat_endpoint")
 def chat():
 
 
