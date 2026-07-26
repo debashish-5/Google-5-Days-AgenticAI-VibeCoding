@@ -11,6 +11,7 @@ from langchain.agents import create_agent
 from dotenv import load_dotenv
 import requests
 import os
+import glob
 from langsmith import traceable
 import numpy as np
 #keyword search
@@ -18,7 +19,7 @@ from langchain_community.retrievers import BM25Retriever
 #Hybrid Search
 from langchain_classic.retrievers import EnsembleRetriever
 from langchain_community.vectorstores import FAISS
-from langchain_community.document_loaders import PyPDFDirectoryLoader
+from langchain_community.document_loaders import PyPDFDirectoryLoader, PyPDFLoader
 from langchain_community.embeddings import HuggingFaceBgeEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from pinecone import Pinecone
@@ -33,8 +34,15 @@ load_dotenv()
 
 splitter = RecursiveCharacterTextSplitter(chunk_size=1000,chunk_overlap=200)
 
-docs = PyPDFDirectoryLoader('documents/')
-documents = docs.load()
+documents = []
+for pdf_path in sorted(glob.glob(os.path.join("documents", "*.pdf"))):
+    if os.path.basename(pdf_path).startswith("~$"):
+        continue
+    try:
+        documents.extend(PyPDFLoader(pdf_path).load())
+    except Exception as exc:
+        print(f"Skipping unreadable PDF '{pdf_path}': {exc}")
+
 Field_embeddings = HuggingFaceBgeEmbeddings(model_name = "sentence-transformers/all-MiniLM-L6-v2")
 
 chunks = splitter.split_documents(documents)
