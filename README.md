@@ -1,5 +1,5 @@
 ===============================================
-Google 5 Days VibeCodes
+Google 5 Days VibeCodes 
 ===============================================
 
 A modular AI assistant prototype built with Flask, LangChain, local FAISS indexes, and Groq. This project combines PDF ingestion, vector search, hybrid retrieval, and conversational generation into a single backend with a lightweight browser interface.
