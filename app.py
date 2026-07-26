@@ -118,8 +118,8 @@ def pinecone_retrive(query):
     )
     return qa.invoke({"question":query,"chat_history":chat_history})
 
-@traceable(run_type="tool")
 @tool
+@traceable(run_type="tool")
 def tavily_search(query: str) -> str:
     """
     ## Search the web using Tavily and return the results.
