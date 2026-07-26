@@ -26,7 +26,7 @@ import os
 from langchain_classic.chains import ConversationalRetrievalChain
 from langchain_core.tools import tool
 from langchain_core.tools.retriever import create_retriever_tool
-
+from langsmith import traceable 
 
 load_dotenv()
 
@@ -82,6 +82,9 @@ api_key = os.getenv("PINECONE_API_KEY")
 
 os.environ['PINECONE_API_KEY'] = api_key
 
+
+
+traceable(name = "pinecone retriever")
 def pinecone_retrive(query):
 # Initialize the Groq LLM
     llm = ChatGroq(
@@ -114,7 +117,7 @@ def pinecone_retrive(query):
     )
     return qa.invoke({"question":query,"chat_history":chat_history})
 
-
+traceable(run_type="tool")
 @tool
 def tavily_search(query: str) -> str:
     """
@@ -160,6 +163,9 @@ def tavily_search(query: str) -> str:
         return f"Error: API returned status code {response.status_code}"
     except Exception as e:
         return f"An error occurred: {str(e)}"
+
+
+traceable(name = "retriever with llm")
 class retriever_x_llm:
     def __init__(self,llm = None, embeddings = None):
         self.llm = ChatGroq(
