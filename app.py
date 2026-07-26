@@ -27,6 +27,7 @@ from langchain_classic.chains import ConversationalRetrievalChain
 from langchain_core.tools import tool
 from langchain_core.tools.retriever import create_retriever_tool
 from langsmith import traceable 
+from langchain_core.messages import HumanMessage
 
 load_dotenv()
 
@@ -215,7 +216,7 @@ class retriever_x_llm:
         # return qa.invoke({"question":query,"chat_history":chat_history})
         brainer = create_retriever_tool(
             retriever,
-            name="HNSW Retriver",
+            name="HNSW_Retriever",
             description="Searches internal documents. Use this as your primary source for internal info."
         )
         agent = create_agent(
@@ -224,7 +225,7 @@ class retriever_x_llm:
             system_prompt=self.condense_question_prompt
         )
 
-        return agent.invoke({'messages':query})
+        return agent.invoke({"messages": [HumanMessage(content=query)]})
 
 
     ## PQ
@@ -252,7 +253,7 @@ class retriever_x_llm:
         # )
         brainer = create_retriever_tool(
             retriever,
-            name = "PQ_faiss Retriever",
+            name = "PQ_faiss_Retriever",
             description="Searches internal documents. Use this as your primary source for internal info."
 
         )
@@ -262,14 +263,14 @@ class retriever_x_llm:
             system_prompt=self.condense_question_prompt
 
         )
-        return agent.invoke({'messages':query})
+        return agent.invoke({"messages": [HumanMessage(content=query)]})
     @traceable(name = "ivf_retriever_agent")
     def ivf_retriever(self,query):
         db = FAISS.load_local(folder_path="IVF_faiss",embeddings=self.embeddings,allow_dangerous_deserialization=True)
         retriever = db.as_retriever(search_kwargs={"k": 3})
         brainer = create_retriever_tool(
             retriever,
-            name = "IVF_faiss Retriever",
+            name = "IVF_faiss_Retriever",
             description="Searches internal documents. Use this as your primary source for internal info."
 
         )
@@ -279,7 +280,7 @@ class retriever_x_llm:
             system_prompt=self.condense_question_prompt
 
         )
-        return agent.invoke({'messages':query})
+        return agent.invoke({"messages": [HumanMessage(content=query)]})
         
     @traceable(name = "ivfpd_retriever_agent")
     def ivfpq_retriever(self,query):
@@ -288,7 +289,7 @@ class retriever_x_llm:
         chat_history = []
         brainer = create_retriever_tool(
             retriever,
-            name = "IVFPQ_faiss Retriever",
+            name = "IVFPQ_faiss_Retriever",
             description="Searches internal documents. Use this as your primary source for internal info."
 
         )
@@ -298,7 +299,7 @@ class retriever_x_llm:
             system_prompt=self.condense_question_prompt
 
         )
-        return agent.invoke({'messages':query})
+        return agent.invoke({"messages": [HumanMessage(content=query)]})
         
         
     @traceable(name="hybrid_search")
@@ -441,13 +442,35 @@ def chat():
     try:
         if faiss_model == "faiss-hnsw":
             result = retriever_llm.hnsw_retrive(user_query)
+            answer = result["messages"][-1].content
+            sources = []
         elif faiss_model == "faiss-pq":
             result = retriever_llm.pq_retrive(user_query)
+            answer = result["messages"][-1].content
+            sources = []
+        elif faiss_model == "faiss-ivf":
+            result = retriever_llm.ivf_retriever(user_query)
+            answer = result["messages"][-1].content
+            sources = []
+        elif faiss_model == "faiss-ivfpq":
+            result = retriever_llm.ivfpq_retriever(user_query)
+            answer = result["messages"][-1].content
+            sources = []
+        elif faiss_model == "pinecone":
+            result = pinecone_retrive(user_query)
+            answer = result.get("answer", "I couldn't generate an answer.")
+            sources = [
+                {
+                    "title": doc.metadata.get("source", "Pinecone document"),
+                    "snippet": (doc.page_content or "")[:400],
+                    "score": 0.9,
+                }
+                for doc in result.get("source_documents", [])
+            ]
         else:
             return jsonify({"error": "Unknown vector store selection"}), 400
 
-        answer = result['messages'][-1].content
-        return jsonify({"response": answer})  # Return the response as JSON
+        return jsonify({"answer": answer, "sources": sources})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
