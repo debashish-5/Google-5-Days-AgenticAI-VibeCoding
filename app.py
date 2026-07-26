@@ -84,7 +84,7 @@ os.environ['PINECONE_API_KEY'] = api_key
 
 
 
-traceable(name = "pinecone retriever")
+@traceable(name = "pinecone_retriever")
 def pinecone_retrive(query):
 # Initialize the Groq LLM
     llm = ChatGroq(
@@ -117,7 +117,7 @@ def pinecone_retrive(query):
     )
     return qa.invoke({"question":query,"chat_history":chat_history})
 
-traceable(run_type="tool")
+@traceable(run_type="tool")
 @tool
 def tavily_search(query: str) -> str:
     """
@@ -165,8 +165,9 @@ def tavily_search(query: str) -> str:
         return f"An error occurred: {str(e)}"
 
 
-traceable(name = "retriever with llm")
+
 class retriever_x_llm:
+    @traceable(name="init_setup")
     def __init__(self,llm = None, embeddings = None):
         self.llm = ChatGroq(
             model="llama-3.1-8b-instant",
@@ -187,6 +188,7 @@ class retriever_x_llm:
             - You can use tool for better more accurate result.
             """
     ##HNSW
+    @traceable(name="hnsw_retriever_agent")
     def hnsw_retrive(self,query):
         llm = ChatGroq(
             model="llama-3.1-8b-instant",
@@ -225,6 +227,7 @@ class retriever_x_llm:
 
 
     ## PQ
+    @traceable(name="pq_retriever_agent")
     def pq_retrive(self,query):
         llm = ChatGroq(
             model="llama-3.1-8b-instant",
@@ -259,7 +262,7 @@ class retriever_x_llm:
 
         )
         return agent.invoke({'messages':query})
-
+    @traceable(name = "ivf_retriever_agent")
     def ivf_retriever(self,query):
         db = FAISS.load_local(folder_path="IVF_faiss",embeddings=self.embeddings,allow_dangerous_deserialization=True)
         retriever = db.as_retriever(search_kwargs={"k": 3})
@@ -277,7 +280,7 @@ class retriever_x_llm:
         )
         return agent.invoke({'messages':query})
         
-
+    @traceable(name = "ivfpd_retriever_agent")
     def ivfpq_retriever(self,query):
         db = FAISS.load_local(folder_path="IVFPQ_faiss",embeddings=self.embeddings,allow_dangerous_deserialization=True)
         retriever = db.as_retriever(search_kwargs={"k": 3})
@@ -297,7 +300,7 @@ class retriever_x_llm:
         return agent.invoke({'messages':query})
         
         
-    
+    @traceable(name="hybrid_search")
     def hybrid_search(self,query):
         chat_history = []
         qa = ConversationalRetrievalChain.from_llm(
@@ -317,7 +320,7 @@ class retriever_x_llm:
 
 
 
-traceable(name = "retriever")
+
 class retriever:
     def __init__(self,llm = None, embeddings = None):
         self.llm = ChatGroq(
@@ -328,6 +331,8 @@ class retriever:
         # 1. Initialize the exact same embedding model used during saving
         self.embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
     ##HNSW
+
+    @traceable(name = "hnsw")
     def hnsw_retrive(query):
         llm = ChatGroq(
             model="llama-3.1-8b-instant",
@@ -356,6 +361,7 @@ class retriever:
 
 
     ## PQ
+    @traceable(name = "pq")
     def pq_retrive(self,query):
         llm = ChatGroq(
             model="llama-3.1-8b-instant",
@@ -378,12 +384,14 @@ class retriever:
         #     condense_question_prompt=prompt,
         # )
         return retriever.invoke(query)
+    @traceable(name = "ivf")
     def ivf_retriever(self,query):
         db = FAISS.load_local(folder_path="IVF_faiss",embeddings=self.embeddings,allow_dangerous_deserialization=True)
         retriver = db.as_retriever(search_kwargs={"k": 3})
 
         return retriver.invoke(query)
 
+    @traceable(name= "ivfpq")
     def ivfpq_retriever(self,query):
         db = FAISS.load_local(folder_path="IVFPQ_faiss",embeddings=self.embeddings,allow_dangerous_deserialization=True)
         retriever = db.as_retriever(search_kwargs={"k": 3})
@@ -412,6 +420,7 @@ agent = create_agent(
 app = Flask(__name__)
 
 @app.route('/')
+@traceable(name = "home")
 def home():
     return render_template('index.html')
 
