@@ -55,6 +55,7 @@ hybrid_retriever = EnsembleRetriever(
 
 
 load_dotenv()
+langsmith_api_key = os.getenv("LANGSMITH_API_KEY")
 
 tavily_api_key = os.getenv("TAVILY_API_KEY")
 
