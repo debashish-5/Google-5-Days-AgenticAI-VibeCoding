@@ -32,6 +32,9 @@ from langchain_core.messages import HumanMessage
 from langchain_core.prompts import ChatPromptTemplate
 #for multiquery retriver 
 from langchain_classic.retrievers.multi_query import MultiQueryRetriever
+from langchain_core.output_parsers import StrOutputParser
+
+
 load_dotenv()
 
 splitter = RecursiveCharacterTextSplitter(chunk_size=1000,chunk_overlap=200)
