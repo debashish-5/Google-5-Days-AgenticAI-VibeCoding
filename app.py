@@ -30,6 +30,8 @@ from langchain_core.tools.retriever import create_retriever_tool
 from langsmith import traceable 
 from langchain_core.messages import HumanMessage
 from langchain_core.prompts import ChatPromptTemplate
+#for multiquery retriver 
+from langchain_classic.retrievers.multi_query import MultiQueryRetriever
 load_dotenv()
 
 splitter = RecursiveCharacterTextSplitter(chunk_size=1000,chunk_overlap=200)
@@ -332,7 +334,7 @@ class Deeper:
             model="llama-3.1-8b-instant",
             api_key=os.getenv("GROQ_API_KEY")
         )
-    @traceable(name = "Level 1 Query Rewriting")
+    @traceable(name = "Deepth Level 1: Query Rewriting")
     def Lv1_query_rewriting(self,query,file_name):
         db = FAISS.load_local(file_name)
         retriever = db.as_retriever(search_kwargs = {"k":3})
@@ -378,6 +380,34 @@ class Deeper:
 
         response = chain.invoke({'context':context,'question':query})
         return response.content
+
+    @traceable(name = "Deepth Level 2: Multiquery Retriever")
+    def Lv2_multiquery_rewriting(self,query,file_name):
+        db = FAISS.load_local(file_name)
+        retriever = db.as_retriever(search_kwargs = {'k':3})
+        multi_retriever = MultiQueryRetriever.from_llm(
+            retriever= retriever,
+            llm = self.llm
+        )
+        docs = multi_retriever.invoke(query)
+        context = "\n\n".join(doc.page_content for doc in docs)
+        final_answer_prompt = ChatPromptTemplate.from_template(
+            """
+            Answer using only the context.
+
+            Context:
+            {context}
+
+            Question:
+            {question}
+
+            """
+        )
+        chain = final_answer_prompt | self.llm
+        response = chain.invoke({'context':context,'question':query})
+        return response.content
+    
+    
     
         
 
