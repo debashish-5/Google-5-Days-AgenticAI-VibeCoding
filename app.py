@@ -29,7 +29,7 @@ from langchain_core.tools import tool
 from langchain_core.tools.retriever import create_retriever_tool
 from langsmith import traceable 
 from langchain_core.messages import HumanMessage
-
+from langchain_core.prompts import ChatPromptTemplate
 load_dotenv()
 
 splitter = RecursiveCharacterTextSplitter(chunk_size=1000,chunk_overlap=200)
@@ -325,6 +325,61 @@ class retriever_x_llm:
             return f"An error occurred during hybrid search: {str(e)}"
         
 
+class Deeper:
+    @traceable(name = "DeepSearch_init")
+    def __init__(self,llm = None):
+        llm = ChatGroq(
+            model="llama-3.1-8b-instant",
+            api_key=os.getenv("GROQ_API_KEY")
+        )
+    @traceable(name = "Level 1 Query Rewriting")
+    def Lv1_query_rewriting(self,query,file_name):
+        db = FAISS.load_local(file_name)
+        retriever = db.as_retriever(search_kwargs = {"k":3})
+
+        rewrite_prompt = ChatPromptTemplate.from_template(
+            """
+            You are a search query optimizer.
+
+            Rewrite the user's question into a better search query.
+
+            Rules:
+            - Keep the same meaning.
+            - Expand abbreviations.
+            - Replace pronouns with expplicit nouns.
+            - Use technical terminology when possible.
+            - Return ONLY the Rewritten query.
+
+            Question:
+            {question}
+            """
+        )
+        # creating rewrite function
+        @traceable(name = "rewrite_query")
+        def rewrite_query(query):
+            prompt = rewrite_prompt.invoke(query)
+            response = self.llm.invoke(prompt)
+            return response.content.strip()
+        ##final output retriever + llm
+        docs = retriever.invoke(rewrite_prompt(query))
+        context = "\n\n".join(doc.page_content for doc in docs)
+        final_answer_prompt = ChatPromptTemplate.from_template(
+            """
+            Answer using only the context.
+            
+            Context:
+            {context}
+
+            Question:
+            {question}
+            """
+        )
+        chain = final_answer_prompt | self.llm
+
+        response = chain.invoke({'context':context,'question':query})
+        return response.content
+    
+        
 
 
 
