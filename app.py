@@ -410,7 +410,47 @@ class Deeper:
         response = chain.invoke({'context':context,'question':query})
         return response.content
 
-    
+    @traceable(name = "HyDE: Hypothitical Documents Embeddings with LLM")
+    def Lv3_HyDE_with_LLM(self,query,file_name):
+        db = FAISS.load_local(file_name)
+        retriever = db.as_retriever(search_kwargs = {'k':3})
+        #prompt
+        hyde_prompt = ChatPromptTemplate.from_template(
+            """
+            Write a detailed paragraph that would likely appear
+            inside a document answering the user's question.
+
+            Do not say "I don't know."
+            Write as if this paragraph exists inside a PDF.
+
+            Question:
+            {question}
+            """
+        )
+        ### function for HyDE generation
+        def generate_hypothetical_document(question):
+            prompt = hyde_prompt.invoke(question)
+            response = llm.invoke(prompt)
+            return response.content
+        docs = generate_hypothetical_document(query)
+        
+        context = '\n\n'.join(doc.page_content for doc in docs)
+
+        #complete the answer with llm
+        answer_prompt = ChatPromptTemplate.from_template("""
+        Context:
+        {context}
+
+        Question:
+        {question}
+        Answer only using the context.
+        """)
+
+        chain = answer_prompt | self.llm
+        result = chain.invoke({'context':context,'question':query})
+
+        return result.content 
+
     
     
         
