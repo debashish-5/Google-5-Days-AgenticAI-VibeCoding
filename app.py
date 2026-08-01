@@ -34,7 +34,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_classic.retrievers.multi_query import MultiQueryRetriever
 from langchain_core.output_parsers import StrOutputParser
 
-#selfquery rewriting
+#selfquery retriever
 from langchain_classic.chains.self_query_retriever import SelfQueryRetriever
 
 load_dotenv()
