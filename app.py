@@ -451,12 +451,57 @@ class Deeper:
 
         return result.content 
 
-    
-    
-        
+    def Lv4_Query_Decomposition(self,query,file_name):
+        db = FAISS.load_local(file_name)
+        retriever = db.as_retriever(search_kwargs = {'k':3})
+        decompose_prompt = ChatPromptTemplate.from_template("""
+        You are an expert at breaking complex questions into smaller independent search questions.
 
+        Rules:
+        - Generate between 3-6 search questions.
+        - Each question should retrieve different information.
+        - Avoid duplicates.
+        - Return one question per line.
+        - Do not include answers or context, only the questions.
 
+        Question:
+        {question}
+        """)
 
+    #decompose function
+        def decompose_query(query):
+            prompt = decompose_prompt.invoke({'question':query})
+            response = self.llm.invoke(prompt)
+            queries = response.content.strip().split('\n')
+            return queries
+        queries = decompose_query(query)
+        all_docs = []
+        for query in queries:
+            docs = retriever.invoke(query)
+            all_docs.extend(docs)
+
+        #remove duplicates
+        unique_docs = {}
+        for doc in all_docs:
+            key = (
+                doc.metadata['source'],
+                doc.metadata['page']
+            )
+            unique_docs[key] = doc
+        docs = list(unique_docs.values())
+        context = '\n\n'.join(doc.page_content for doc in docs if docs)
+        answer_prompt = ChatPromptTemplate.from_templaye(
+            """
+            Answer only using the context.
+            Context:
+            {context}
+            Question:
+            {question}
+            """
+        )
+        chain = answer_prompt | self.llm
+        result = chain.invoke({'context':context,'question':query})
+        return result.content
 
 
 
