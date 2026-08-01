@@ -467,6 +467,7 @@ class Deeper:
         Question:
         {question}
         """)
+        
 
     #decompose function
         def decompose_query(query):
