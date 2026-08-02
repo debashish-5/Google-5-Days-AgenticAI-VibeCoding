@@ -452,7 +452,7 @@ class Deeper:
         result = chain.invoke({'context':context,'question':query})
 
         return result.content 
-
+    @traceable(name = "Query Decomposition")
     def Lv4_Query_Decomposition(self,query,file_name):
         db = FAISS.load_local(file_name)
         retriever = db.as_retriever(search_kwargs = {'k':3})
