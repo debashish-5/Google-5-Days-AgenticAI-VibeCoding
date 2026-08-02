@@ -10,6 +10,8 @@ This repository includes two complementary Flask backends:
 - `app.py` — a feature-rich implementation with agent tools, hybrid search, Pinecone support, Tavily web search, and conversational retrievers.
 - `app_new.py` — a cleaner and more stable endpoint for selecting local FAISS indexes and generating answers with Groq.
 
+The project is designed to help learners progress from RAG beginner to advanced practitioner, with daily notes and insights added as the code evolves.
+
 The project demonstrates:
 - local PDF ingestion and chunking
 - FAISS vector search across multiple index types
