@@ -1,5 +1,6 @@
 # Google 5 Days VibeCodes
 
+
 A production-aware AI teaching assistant prototype that combines Flask, local FAISS vector search, hybrid retrieval, PDF document ingestion, and Groq-backed conversational generation.
 
 ## About this project
