@@ -37,8 +37,19 @@ from langchain_core.output_parsers import StrOutputParser
 #selfquery retriever
 from langchain_classic.chains.self_query_retriever import SelfQueryRetriever
 
+#parent child retriever
+from langchain_classic.retrievers import ParentChildRetriever
+from langchain_community.docstore.in_memory import InMemoryDocstore
+from langchain_classic.storage import InMemoryStore
+import faiss
+from langchain_community.document_loaders import PyPDFDirectoryLoader, PyPDFLoader
+docs = PyPDFDirectoryLoader("documents")
+documents = docs.load()
+parent_splitter = RecursiveCharacterTextSplitter(chunk_size = 2000,chunk_overlap = 200)
+child_splitter = RecursiveCharacterTextSplitter(chunk_size = 400,chunk_overlap = 50)
 load_dotenv()
 
+#-------
 splitter = RecursiveCharacterTextSplitter(chunk_size=1000,chunk_overlap=200)
 
 documents = []
@@ -470,7 +481,34 @@ class Deeper:
         {question}
         """)
 
-
+    @traceable(name = "Parent Child Retrieval")
+    def Lv5_Parent_Child_Retrieval(self,query,file_name):
+        dimension = 384
+        index = faiss.IndexFlatL2(dimension)
+        vectorstore = FAISS(embeddings = Field_embeddings, index = index,docstore = InMemoryDocstore(), index_to_docstore_id = {})
+        store = InMemoryStore()
+        retriever = ParentChildRetriever(
+            vectorstore = vectorstore,
+            docstore = store,
+            parent_splitter = parent_splitter,
+            child_splitter = child_splitter
+        )
+        retriever.add_documents(documents)
+        docs = retriever.invoke(query)
+        context = '\n\n'.join(doc.page_content for doc in docs)
+        prompt = ChatPromptTemplate.from_template(
+            """
+            Answer only using the context.
+            Context:
+            {context}
+            Question:
+            {question}
+            """
+        )
+        chain = prompt | self.llm | StrOutputParser()
+        result = chain.invoke({'context':context,'question':query})
+        return result
+    
     #decompose function
         def decompose_query(query):
             prompt = decompose_prompt.invoke({'question':query})
