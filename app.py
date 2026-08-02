@@ -442,8 +442,8 @@ class Deeper:
         )
         ### function for HyDE generation
         def generate_hypothetical_document(question):
-            prompt = hyde_prompt.invoke(question)
-            response = llm.invoke(prompt)
+            prompt = hyde_prompt.invoke({'question': question})
+            response = self.llm.invoke(prompt)
             return response.content
         docs = generate_hypothetical_document(query)
         
