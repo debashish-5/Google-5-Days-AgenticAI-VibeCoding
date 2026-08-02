@@ -375,11 +375,11 @@ class Deeper:
         # creating rewrite function
         @traceable(name = "rewrite_query")
         def rewrite_query(query):
-            prompt = rewrite_prompt.invoke(query)
+            prompt = rewrite_prompt.invoke({'question': query})
             response = self.llm.invoke(prompt)
             return response.content.strip()
         ##final output retriever + llm
-        docs = retriever.invoke(rewrite_prompt(query))
+        docs = retriever.invoke(rewrite_prompt({'question': query}))
         context = "\n\n".join(doc.page_content for doc in docs)
         final_answer_prompt = ChatPromptTemplate.from_template(
             """
