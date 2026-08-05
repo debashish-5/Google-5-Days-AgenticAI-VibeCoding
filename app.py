@@ -33,7 +33,8 @@ from langchain_core.prompts import ChatPromptTemplate
 #for multiquery retriver 
 from langchain_classic.retrievers.multi_query import MultiQueryRetriever
 from langchain_core.output_parsers import StrOutputParser
-
+from langchain_classic.retrievers import ContextualCompressionRetriever
+from langchain_classic.retrievers.document_compressors import EmbeddingFilter,LLMChainExtractor
 #selfquery retriever
 from langchain_classic.chains.self_query_retriever import SelfQueryRetriever
 
@@ -43,6 +44,7 @@ from langchain_community.docstore.in_memory import InMemoryDocstore
 from langchain_classic.storage import InMemoryStore
 import faiss
 from langchain_community.document_loaders import PyPDFDirectoryLoader, PyPDFLoader
+
 docs = PyPDFDirectoryLoader("documents")
 documents = docs.load()
 parent_splitter = RecursiveCharacterTextSplitter(chunk_size = 2000,chunk_overlap = 200)
@@ -544,8 +546,31 @@ class Deeper:
         result = chain.invoke({'context':context,'question':query})
         return result.content
     @traceable(name = "EmbeddingFilterRetriever")
-    
-
+    def Lv6_EmbeddingFilterRetriever(self,query,file_name):
+        db = FAISS.load_local(file_name)
+        retriever = db.as_retriever(search_kwargs = {'k':3})
+        filter_emb = EmbeddingFilter(
+            embeddings = Field_embeddings,
+            similarity_threshold = 0.7
+        )
+        compression_retriever = ContextualCompressionRetriever(
+            base_retriever = retriever,
+            compressor = filter_emb
+        )
+        docs = compression_retriever.invoke(query)
+        context = '\n\n'.join(doc.page_content for doc in docs)
+        answer_prompt = ChatPromptTemplate.from_template(
+            """
+            Answer only using the context.
+            Context:
+            {context}
+            Question:
+            {question}
+            """
+        )
+        chain = answer_prompt | self.llm | StrOutputParser()
+        result = chain.invoke({'context':context,'question':query})
+        return result
 
 class retriever:
     def __init__(self,llm = None, embeddings = None):
