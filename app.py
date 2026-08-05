@@ -543,7 +543,8 @@ class Deeper:
         chain = answer_prompt | self.llm
         result = chain.invoke({'context':context,'question':query})
         return result.content
-
+    @traceable(name = "EmbeddingFilterRetriever")
+    
 
 
 class retriever:
