@@ -37,7 +37,7 @@ from langchain_classic.retrievers import ContextualCompressionRetriever
 from langchain_classic.retrievers.document_compressors import EmbeddingFilter,LLMChainExtractor
 #selfquery retriever
 from langchain_classic.chains.self_query_retriever import SelfQueryRetriever
-
+from langchain_classic.retrievers.document_compressors import LLMChainFilter
 #parent child retriever
 from langchain_classic.retrievers import ParentChildRetriever
 from langchain_community.docstore.in_memory import InMemoryDocstore
@@ -571,6 +571,34 @@ class Deeper:
         chain = answer_prompt | self.llm | StrOutputParser()
         result = chain.invoke({'context':context,'question':query})
         return result
+    @traceable(name = "LLMChainExctor")
+    def lv6_LLMChainExtractor(self,query,file_name):
+        db = FAISS.load_local(file_name)
+        retriever = db.as_retriever(search_kwargs=  {'k':5})
+        compressor = LLMChainExtractor.from_llm(self.llm)
+        compression_retriever = ContextualCompressionRetriever(
+            base_retriever=retriever,
+            base_compressor=compressor
+        )
+        docs = compression_retriever.invoke(query)
+        context = "\n\n".join(doc.page_content for doc in docs)
+        prompt = ChatPromptTemplate.from_template(
+            """
+            Answer only using the context.
+
+            Context:
+            {context}
+
+            Question:
+            {question}
+            """
+        )
+        chain = prompt | self.llm | StrOutputParser()
+        result = chain.invoke({'context':context,'question':query})
+        return result
+
+
+
 
 class retriever:
     def __init__(self,llm = None, embeddings = None):
