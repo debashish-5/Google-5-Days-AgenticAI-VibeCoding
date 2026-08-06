@@ -597,7 +597,31 @@ class Deeper:
         result = chain.invoke({'context':context,'question':query})
         return result
 
+    @traceable(name = "LLMChainFilter")
+    def lv7_LLMChainFilter(self,query,file_name):
+        db = FAISS.load_local(file_name)
+        retriever = db.as_retriever(search_kwargs=  {'k':5})
+        compressor = LLMChainFilter.from_llm(self.llm)
+        compression_retriever = ContextualCompressionRetriever(
+            base_retriever = retriever,
+            base_compressor = compressor
+        )
+        docs = compression_retriever.invoke(query)
+        context = '\n\n'.join(doc.page_content for doc in docs)
+        prompt = ChatPromptTemplate.from_template(
+            """
+            Answer only using the context.
 
+            Context:
+            {context}
+
+            Question:
+            {question}
+            """
+        )
+        chain = prompt | self.llm | StrOutputParser()
+        result = chain.invoke({'context':context,'question':query})
+        return result
 
 
 class retriever:
