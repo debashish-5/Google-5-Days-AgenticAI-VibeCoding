@@ -549,7 +549,7 @@ class Deeper:
     def Lv6_EmbeddingFilterRetriever(self,query,file_name):
         db = FAISS.load_local(file_name)
         retriever = db.as_retriever(search_kwargs = {'k':3})
-        filter_emb = EmbeddingFilter(
+        filter_emb = EmbeddingsFilter(
             embeddings = Field_embeddings,
             similarity_threshold = 0.7
         )
