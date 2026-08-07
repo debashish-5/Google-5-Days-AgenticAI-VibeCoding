@@ -1,4 +1,5 @@
-﻿from langchain_core.prompts import PromptTemplate
+﻿from chromadb import Embeddings
+from langchain_core.prompts import PromptTemplate
 from langchain_groq import ChatGroq
 from langchain_classic.chains import ConversationalRetrievalChain
 from flask import Flask, request, jsonify,render_template
@@ -12,7 +13,7 @@ from dotenv import load_dotenv
 import requests
 import os
 import glob
-from langsmith import traceable
+from langsmith import trace, traceable
 import numpy as np
 #keyword search
 from langchain_community.retrievers import BM25Retriever
@@ -34,10 +35,9 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_classic.retrievers.multi_query import MultiQueryRetriever
 from langchain_core.output_parsers import StrOutputParser
 from langchain_classic.retrievers import ContextualCompressionRetriever
-from langchain_classic.retrievers.document_compressors import EmbeddingFilter,LLMChainExtractor
+from langchain_classic.retrievers.document_compressors import EmbeddingsFilter,LLMChainExtractor,LLMChainFilter,DocumentCompressorPipeline
 #selfquery retriever
 from langchain_classic.chains.self_query_retriever import SelfQueryRetriever
-from langchain_classic.retrievers.document_compressors import LLMChainFilter
 #parent child retriever
 from langchain_classic.retrievers import ParentChildRetriever
 from langchain_community.docstore.in_memory import InMemoryDocstore
@@ -622,6 +622,49 @@ class Deeper:
         chain = prompt | self.llm | StrOutputParser()
         result = chain.invoke({'context':context,'question':query})
         return result
+
+    @traceable(name = "DocumentCompressorPipeline")
+    def lv8_DocumentCompressorPipeline(self,query,file_name):
+        db = FAISS.load_local(file_name)
+        retriever = db.as_retriever(search_kwargs = {'k':20})
+        #embedding filter
+        embedding_filter = EmbeddingsFilter(
+            embeddings= Field_embeddings,
+            similarity_threshold=0.70
+        )
+        #LLM filter
+        llm_filter = LLMChainFilter.from_llm(self.llm)
+        #LLM Extractor
+        extractor = LLMChainExtractor.from_llm(self.llm)
+        #create pipeline 
+        pipeline = DocumentCompressorPipeline(
+            transformers=[
+                embedding_filter,
+                llm_filter,
+                extractor
+            ]
+        )
+        #wrap retriever
+        compression_retriever = ContextualCompressionRetriever(
+            base_compressor=pipeline,
+            base_retriever = retriever
+        )
+        docs = compression_retriever.invoke(query)
+        context = '\n\n'.join(doc.page_content for doc in docs)
+        prompt = PromptTemplate.from_template("""
+        Answer the question using only the context provided.
+
+        Context:
+        {context}
+
+        Question:
+        {query}
+        """)
+        chain = prompt | self.llm | StrOutputParser()
+        result = chain.invoke({'query':query})
+        return result
+
+
 
 
 class retriever:
