@@ -667,6 +667,27 @@ class Deeper:
 
     @traceable(name = "CrossEncoderReranker")
     def lv9_CrossEncoderReranker(self,query,file_name):
+        db = FAISS.load_local(file_name)
+        retriever = db.as_retriever(search_kwargs = {'k':20})
+        reranker = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2")
+        docs = retriever.invoke(query)
+        pairs = [[query,doc.page_content] for doc in docs]
+        scores = reranker.predict(pairs)
+        # Sort documents by their reranked scores
+        ranked_docs = [doc for _, doc in sorted(zip(scores, docs), reverse=True)]
+        context = '\n\n'.join(doc.page_content for doc in docs)
+        prompt = PromptTemplate.from_template("""
+        Answer the question using only the context provided.
+        Question:
+        {query}
+
+        Context:
+        {context}
+
+        """)
+        chain = prompt | self.llm | StrOutputParser()
+        result = chain.invoke({'query':query,'context':context})
+        return result
 
 class retriever:
     def __init__(self,llm = None, embeddings = None):
