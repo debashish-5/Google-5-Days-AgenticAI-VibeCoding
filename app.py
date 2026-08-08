@@ -31,6 +31,7 @@ from langchain_core.tools.retriever import create_retriever_tool
 from langsmith import traceable 
 from langchain_core.messages import HumanMessage
 from langchain_core.prompts import ChatPromptTemplate
+from sentence_transformers import CrossEncoder
 #for multiquery retriver 
 from langchain_classic.retrievers.multi_query import MultiQueryRetriever
 from langchain_core.output_parsers import StrOutputParser
@@ -664,8 +665,8 @@ class Deeper:
         result = chain.invoke({'query':query})
         return result
 
-    
-
+    @traceable(name = "CrossEncoderReranker")
+    def lv9_CrossEncoderReranker(self,query,file_name):
 
 class retriever:
     def __init__(self,llm = None, embeddings = None):
