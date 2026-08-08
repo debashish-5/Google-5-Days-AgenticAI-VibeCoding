@@ -689,6 +689,9 @@ class Deeper:
         result = chain.invoke({'query':query,'context':context})
         return result
 
+
+    
+
 class retriever:
     def __init__(self,llm = None, embeddings = None):
         self.llm = ChatGroq(
