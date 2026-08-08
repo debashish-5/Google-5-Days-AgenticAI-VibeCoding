@@ -10,6 +10,8 @@ from langchain_core.tools import tool
 from langchain_community.tools import DuckDuckGoSearchResults
 from langchain.agents import create_agent
 from dotenv import load_dotenv
+import numpy as np
+import pandas as pd
 import requests
 import os
 import glob
