@@ -664,7 +664,7 @@ class Deeper:
         result = chain.invoke({'query':query})
         return result
 
-
+    
 
 
 class retriever:
@@ -679,7 +679,7 @@ class retriever:
     ##HNSW
 
     @traceable(name = "hnsw")
-    def hnsw_retrive(query):
+    def hnsw_retrive(self,query):
         llm = ChatGroq(
             model="llama-3.1-8b-instant",
             api_key=os.getenv("GROQ_API_KEY")
