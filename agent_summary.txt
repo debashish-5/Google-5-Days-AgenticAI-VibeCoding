@@ -1,0 +1,42 @@
+The provided text describes the structure and usage of Agent Skills, which is a system for organizing and executing reusable tasks or workflows within an AI agent. Here's a summary of the key points:
+
+1. Agent Skills are organized into folders that include a `SKILL.md` file (metadata), scripts, references, and assets. These components can be loaded as needed without polluting the token window.
+2. The `SKILL.md` file contains metadata about the skill, including its name and description, which is used to activate the skill based on specific triggers.
+3. Scripts contain executable code for deterministic tasks, while references and assets provide supplementary context and templates.
+4. Skills can be either created by translating existing knowledge or crystallizing a workflow that an AI agent has already performed successfully.
+5. To test the skill, it is dropped into the appropriate directory for your tool, restarted, and tested with natural prompts to confirm if it triggers correctly.
+6. There are three main ways to interact with and install Skills: file-based (Coding Agents & CLIs), UI-based (Web & Enterprise Workspaces), and programmatic (Custom Frameworks).
+7. It's important to note that while the format for Agent Skills is shared, the installation path, activation rules, and tool-specific details may vary depending on the specific AI agent or chatbot being used.
+
+The passages discuss the evolution of software development from traditional methods to Agentic Engineering, where the primary output is no longer raw syntax but systems that produce code. This shift is facilitated by interoperable agents and various open protocols such as Model Context Protocol (MCP), Agent-to-Agent (A2A), Agent-to-User Interface (A2UI), Autonomous Procurement with AP2, and Universal Commerce Protocol (UCP).
+
+These protocols serve different purposes: MCP simplifies the complexity of integrating various LLMs (Language Models) with external tools, reducing the number of bespoke integration points. A2A is the foundational layer for distributed multi-agent architectures that enables a virtual workforce to scale by standardizing communication between specialized domain experts.
+
+A2UI allows developers to stream data to agents in real-time over standard web protocols, while AP2 and UCP are protocols designed for autonomous procurement and commerce, respectively. The passages emphasize the importance of leveraging official specialist agents maintained by teams with deep domain expertise to offload the maintenance of specialist domain logic, allowing developers to focus on unique user value and core innovation.
+
+The passages also provide tips for best practices when using these protocols, such as searching for existing MCP servers first, limiting access to specific projects, and never hardcoding credentials directly into an agent's prompt or local scripts. The ultimate goal is to enable vibecoders (developers) to leverage the power of interoperable AI agents in building high-value applications.
+
+The passages discuss the shift towards Agentic Engineering, a new approach in software development that utilizes AI agents. This new method aims to make the development process easier to maintain and scale, but requires a strict evaluation process for decision-making.
+
+The core of Agentic Engineering is the concept of skills, which encompass the entire lifecycle of an agent: scaffold, build, evaluate, deploy, publish, observe. Inside an agent runtime, the majority of the codebase (98.4%) consists of operational infrastructure, while only 1.6% is the agent loop itself. This indicates that the engineering around the model is what makes the system production-grade.
+
+The architectural insight behind Agentic Engineering is that as foundation models converge in baseline reasoning, the differentiator for autonomous reliability becomes the deterministic engineering around the model. The unit that gets composed and reused is the skill.
+
+To build DAG (Directed Acyclic Graph), discrete engineering capabilities map to specific node functions within an execution graph nodes: Generator, Reviewer & Gate, Pipeline, Inversion & Recovery.
+
+The trend in Agentic Engineering mirrors early web apps in terms of scaling friction and contextual overload. To overcome these bottlenecks, a similar blueprint can be followed as with ML engineers and software engineers years ago by logically partitioning a monolithic agent into distinct, purpose-built sub-agents.
+
+The passages also emphasize the importance of using an AGENTS.MD file to provide standard guidance for coding agents, and encourages deep thinking, goal-driven execution, and minimal code writing in practice. The paper is targeted at software engineers, engineering managers, architects, and technical leaders who want to adopt Agentic Engineering for its potential benefits in maintaining the fidelity and reliability of outcomes.
+
+The paper titled "Agent Tools & Interoperability" discusses the efficient utilization of protocols to rapidly construct a virtual data and execution team using Vibe Coding. It is aimed at vibe coders who prioritize consumption over creation in the era of less structured programming, where velocity of outcome is key.
+
+The paper highlights the importance of standardized protocols, such as the Model Context Protocol (MCP), which allow for the transformation of isolated "custom machines" into modular, interoperable platforms. The use of MCP enables vibe coders to bypass the NxM integration crisis and debug transport layer issues efficiently.
+
+The Vibe Coder's View of MCP outlines the discovery, configuration, and connection processes for onboarding an MCP server. It proposes a standardized socket approach that replaces the traditional bespoke hardwiring of connections, leading to fewer dependencies, a smaller footprint, and a simpler lifecycle.
+
+The paper also emphasizes best practices for consuming MCP servers, including auditing public servers before connection and using RAG (Run-time Application Self-Protection) for tools to keep the agent's context window clean.
+
+Additionally, the paper discusses the evolution of agentic architectures, reflecting a recurring pattern in technology: the shift from manual, low-level configuration to high-level, intent-based, declarative orchestration. This shift is compared to the transition from Monolithic to Microservices architectures in software history.
+
+Lastly, the paper introduces the concept of Vibe Coding as a new Software Development Life Cycle (SDLC) approach where developers describe what they want in natural language and let AI systems handle the coding process.
+
