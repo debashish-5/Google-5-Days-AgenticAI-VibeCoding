@@ -16,6 +16,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import requests
 import os
+from io import BytesIO
 import glob
 from langsmith import trace, traceable
 import numpy as np
