@@ -791,7 +791,87 @@ class retriever:
         
 
 
+class AgenticRAG:
+    @traceable(name= "AgenticRAG_init")
+    def __init__(self,llm = None,tools=None):
+        self.llm = ChatGroq(
+            model = 'llama-3.1-8b-instant',
+            api_key = os.getenv("GROQ_API_KEY")
+        )
+        self.duckduckgosearch = DuckDuckGoSearchResults()
+        
 
+    @tool
+    @traceable(run_type="tool")
+    def tavily_search(query: str) -> str:
+        """
+        ## Search the web using Tavily and return the results.
+        Use this tool to search the web for information related to the user's question. Return the search results as a string.
+        Give best result which is most relevant to the query. If no results are found, return "No results found."
+        Args:
+            query (str): The search query.
+        Returns:
+            str: The search results.
+        """
+        url = "https://api.tavily.com/search"
+        headers = {
+            "Content-Type": "application/json",
+        }
+        params = {
+            "api_key": os.getenv("TAVILY_API_KEY"),
+            "query": query,
+            "search_depth": "basic",
+            "max_results": 3  # Tells the API to only fetch up to 3 results
+        }
+        
+        try:
+            response = requests.post(url, headers=headers, json=params)
+            if response.status_code == 200:
+                data = response.json()
+                results = data.get("results", [])
+                
+                if not results:
+                    return "No results found."
+                    
+                # Take the first 3 results and format them into a single string
+                formatted_results = []
+                for item in results[:3]:
+                    title = item.get("title", "No Title")
+                    url_link = item.get("url", "No URL")
+                    content = item.get("content", "")
+                    
+                    formatted_results.append(f"Title: {title}\nURL: {url_link}\nContent: {content}\n---")
+                    
+                return "\n".join(formatted_results)
+                
+            return f"Error: API returned status code {response.status_code}"
+        except Exception as e:
+            return f"An error occurred: {str(e)}"
+    @tool
+    def basic_search(query:str,file_name :str = None) -> str:
+        """
+        ## Search the Vector Store and return the results.
+        Args:
+            query (str): The search query.
+        Returns:
+            str: The search results.
+        """
+        try:
+            if file_name:
+                file = file_name
+            else:
+                file = "faiss_index"
+            
+            db = FAISS.load_local(file,allow_dangerous_deserialization = True)
+            retriever = db.as_retriever(search_kwargs={'k':3})
+            result = retriever.invoke(query)
+            return '\n\n'.join(doc.page_content for doc in docs)
+        except Exception as e:
+            return 'Erorr Occurs during {e}.'
+
+
+
+        
         
 
 
