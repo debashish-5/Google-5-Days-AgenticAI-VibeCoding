@@ -712,6 +712,7 @@ class hardcore:
         result_v10 = deeper.Lv10_CrossEncoderReranker(result_v9,file_name)
         return result_v10
 
+
 class retriever:
     def __init__(self,llm = None, embeddings = None):
         self.llm = ChatGroq(
@@ -790,6 +791,8 @@ class retriever:
         
 
 
+
+        
 
 
 
