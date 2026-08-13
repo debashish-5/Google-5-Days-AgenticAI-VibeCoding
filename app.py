@@ -605,7 +605,7 @@ class Deeper:
         return result
 
     @traceable(name = "LLMChainFilter")
-    def lv7_LLMChainFilter(self,query,file_name):
+    def Lv8_LLMChainFilter(self,query,file_name):
         db = FAISS.load_local(file_name)
         retriever = db.as_retriever(search_kwargs=  {'k':5})
         compressor = LLMChainFilter.from_llm(self.llm)
@@ -631,7 +631,7 @@ class Deeper:
         return result
 
     @traceable(name = "DocumentCompressorPipeline")
-    def lv8_DocumentCompressorPipeline(self,query,file_name):
+    def Lv9_DocumentCompressorPipeline(self,query,file_name):
         db = FAISS.load_local(file_name)
         retriever = db.as_retriever(search_kwargs = {'k':20})
         #embedding filter
@@ -672,7 +672,7 @@ class Deeper:
         return result
 
     @traceable(name = "CrossEncoderReranker")
-    def lv9_CrossEncoderReranker(self,query,file_name):
+    def Lv10_CrossEncoderReranker(self,query,file_name):
         db = FAISS.load_local(file_name)
         retriever = db.as_retriever(search_kwargs = {'k':20})
         reranker = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2")
@@ -697,15 +697,20 @@ class Deeper:
 
 
 class hardcore:
-    def __init__(self):
-        pass   
-
     @traceable(name = "Hardcore")
     def fullPower(self,query,file_name):
         deeper = Deeper()
         result_v1 = deeper.Lv1_query_rewriting(query,file_name)
         result_v2 = deeper.Lv2_multiquery_rewriting(result_v1,file_name)
-        result_v3 = deeper.
+        result_v3 = deeper.Lv3_HyDE_with_LLM(result_v2,file_name)
+        result_v4 = deeper.Lv4_Query_Decomposition(result_v3,file_name)
+        result_v5 = deeper.Lv5_Parent_Child_Retrieval(result_v4,file_name)
+        result_v6 = deeper.Lv6_EmbeddingFilterRetriever(result_v5,file_name)
+        result_v7 = deeper.Lv7_LLMChainExtractor(result_v6,file_name)
+        result_v8 = deeper.Lv8_LLMChainFilter(result_v7,file_name)
+        result_v9 = deeper.Lv9_DocumentCompressorPipeline(result_v8,file_name)
+        result_v10 = deeper.Lv10_CrossEncoderReranker(result_v9,file_name)
+        return result_v10
 
 class retriever:
     def __init__(self,llm = None, embeddings = None):
