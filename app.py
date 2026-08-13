@@ -869,7 +869,10 @@ class AgenticRAG:
         except Exception as e:
             return 'Erorr Occurs during {e}.'
 
-
+    @tool
+    def hybrid_search(query:str,file_name:str = None) -> str:
+        """
+        ## Search """
 
         
         
