@@ -1,4 +1,5 @@
 ﻿from chromadb import Embeddings
+from envs.langgraph_env.Lib import re
 from langchain_core.prompts import PromptTemplate
 from langchain_groq import ChatGroq
 from langchain_classic.chains import ConversationalRetrievalChain
@@ -578,7 +579,7 @@ class Deeper:
         result = chain.invoke({'context':context,'question':query})
         return result
     @traceable(name = "LLMChainExctor")
-    def lv6_LLMChainExtractor(self,query,file_name):
+    def Lv7_LLMChainExtractor(self,query,file_name):
         db = FAISS.load_local(file_name)
         retriever = db.as_retriever(search_kwargs=  {'k':5})
         compressor = LLMChainExtractor.from_llm(self.llm)
@@ -695,7 +696,16 @@ class Deeper:
         return result
 
 
-    
+class hardcore:
+    def __init__(self):
+        pass   
+
+    @traceable(name = "Hardcore")
+    def fullPower(self,query,file_name):
+        deeper = Deeper()
+        result_v1 = deeper.Lv1_query_rewriting(query,file_name)
+        result_v2 = deeper.Lv2_multiquery_rewriting(result_v1,file_name)
+        result_v3 = deeper.
 
 class retriever:
     def __init__(self,llm = None, embeddings = None):
