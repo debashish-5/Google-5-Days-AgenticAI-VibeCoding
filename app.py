@@ -871,8 +871,7 @@ class AgenticRAG:
 
     @tool
     def hybrid_search(query:str,file_name:str = None) -> str:
-        """
-        ## Search """
+        """ ## Hybrid Search with LLM"""
 
         
         
