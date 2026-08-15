@@ -914,7 +914,7 @@ class AgenticRAG:
             base_retriever=retriever
         )
         result = compression_retriever.invoke(query)
-        return result if result
+        return "\n\n".join(doc.page_content for doc in docs)
     
         
 
