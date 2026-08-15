@@ -914,7 +914,7 @@ class AgenticRAG:
             base_retriever=retriever
         )
         result = compression_retriever.invoke(query)
-        return result
+        return result if result
     
         
 
