@@ -51,6 +51,9 @@ from langchain_community.docstore.in_memory import InMemoryDocstore
 from langchain_classic.storage import InMemoryStore
 import faiss
 from langchain_community.document_loaders import PyPDFDirectoryLoader, PyPDFLoader
+from langchain_community.retrievers import BM25Retriever
+from langchain_classic.retrievers import EnsembleRetriever
+
 
 docs = PyPDFDirectoryLoader("documents")
 documents = docs.load()
@@ -870,10 +873,49 @@ class AgenticRAG:
             return 'Erorr Occurs during {e}.'
 
     @tool
-    def hybrid_search(query:str,file_name:str = None) -> str:
+    def hybrid_search(query:str,file_name:str = None) -> object:
         """ ## Hybrid Search with LLM"""
-
-        
+        try:
+            if file_name:
+                file = file_name
+            else:
+                file = "faiss_index"
+            db = FAISS.load_local(file,allow_dangerous_deserialization = True)
+            sementic_retriever = db.as_retriever(search_kwargs = {'k':3})
+            bm25_retriever = BM25Retriever.from_documents(chunks)
+            bm25_retriever.k= 3
+            hybrid_retriever = EnsembleRetriever(retrievers=[sementic_retriever,bm25_retriever],weights=[0.6,0.4])
+            hybrid_result = hybrid_retriever.invoke(query)
+            context = '\n\n'.join(doc.page_content for doc in hybrid_result)
+            return hybrid_result
+        except Exception as e:
+            return f"Error: Occurs in {e}"
+    @tool
+    def context_compression(query:str,file_name:str = None) -> str:
+        """
+            ## Context Compression Power
+        aim: If user ask about Compressing then use this.
+        Args:
+            query: user input
+            file_name: option (if user give filename then use this otherwise use default "faiss_index" file )
+        return:
+            return the compressed result 
+            
+        """
+        if file_name:
+            file = file_name
+        file = "faiss_index"
+        db = FAISS.load_local(file,allow_dangerous_deserialization=True)
+        retriever = db.as_retriever(search_kwargs = {'k':10})
+        filteer = EmbeddingsFilter(embeddings=Embeddings,similarity_threshold=0.75)
+        #compression retriever
+        compression_retriever = ContextualCompressionRetriever(
+            base_compressor=filteer,
+            base_retriever=retriever
+        )
+        result = compression_retriever.invoke(query)
+        return result
+    
         
 
 
