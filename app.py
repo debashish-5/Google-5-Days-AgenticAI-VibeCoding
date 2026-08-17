@@ -821,6 +821,10 @@ class AgenticRAG:
             api_key = os.getenv("GROQ_API_KEY")
         )
         self.duckduckgosearch = DuckDuckGoSearchResults()
+        self.basic_search
+        self.hybrid_search
+        self.context_compression
+        self.duckduckgosearch
         
 
     @tool
@@ -935,8 +939,38 @@ class AgenticRAG:
         result = compression_retriever.invoke(query)
         return "\n\n".join(doc.page_content for doc in docs)
         # langchain Agent
-        def Bigneer_Retriever_Agent(self,query):
-            basic_retriver_agent = create_agent(self.llm,tools=)
+    @tool
+    def Bigneer_Retriever_Agent(query:str) -> list:
+        """# A Bignner Retriever Agent
+        Args:
+            query: User input.
+        return: 
+            Agent Answer
+        """
+        basic_retriver_agent = create_agent(llm,tools=[basic_search])
+        return basic_retriver_agent.invoke({'messages':query})
+    @tool
+    def intermidate_retriever_agent(query:str) -> list:
+        """# A intermidate Retriever Agent
+        Args:
+            query: User input.
+        return: 
+            Agent Answer
+        """
+        intermidate_agent = create_agent(model = llm,tools= [hybrid_retriever])
+        return intermidate_agent.invoke({'messages':query})
+    @tool
+    def advanced_retriever_agent(query:str) -> list:
+        """# A Advanced Retriever Agent
+        Args:
+            query: User input.
+        return: 
+            Agent Answer
+        """
+        advanced_agent = create_agent(model = llm,tools=[basic_search,hybrid_retriever,context_compression,tavily_search])
+        return advanced_agent.invoke({'messages':query})
+    
+
     
         
 
