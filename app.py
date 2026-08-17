@@ -58,7 +58,7 @@ from autogen_agentchat.agents import AssistantAgent
 from autogen_ext.models.openai import OpenAIChatCompletionClient
 from autogen_agentchat.messages import TextMessage
 from autogen_agentchat.teams import RoundRobinGroupChat
-from autogen_agentchat.ui
+from autogen_agentchat.ui import Console
 
 docs = PyPDFDirectoryLoader("documents")
 documents = docs.load()
