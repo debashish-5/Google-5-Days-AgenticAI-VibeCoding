@@ -55,7 +55,10 @@ from langchain_community.retrievers import BM25Retriever
 from langchain_classic.retrievers import EnsembleRetriever
 # autogen integration 
 from autogen_agentchat.agents import AssistantAgent
-from autogen_co
+from autogen_ext.models.openai import OpenAIChatCompletionClient
+from autogen_agentchat.messages import TextMessage
+from autogen_agentchat.teams import RoundRobinGroupChat
+from autogen_agentchat.ui
 
 docs = PyPDFDirectoryLoader("documents")
 documents = docs.load()
