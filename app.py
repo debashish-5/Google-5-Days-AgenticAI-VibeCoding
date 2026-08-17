@@ -59,12 +59,26 @@ from autogen_ext.models.openai import OpenAIChatCompletionClient
 from autogen_agentchat.messages import TextMessage
 from autogen_agentchat.teams import RoundRobinGroupChat
 from autogen_agentchat.ui import Console
+from autogen_agentchat.conditions import TextMentionTermination,HandoffTermination,FunctionalTermination,TextMessageTermination
+load_dotenv()
+# autogen
+model_client = OpenAIChatCompletionClient(model="llama-3.1-8b-instant",
+                                          base_url = "https://api.groq.com/v1/",
+                                          model_info = {
+                                              'vision':True,
+                                              'function_calling':True,
+                                              'json_output':True,
+                                              'structured_output':True,
+                                              'family':"unknown"
+                                          })
+
+
 
 docs = PyPDFDirectoryLoader("documents")
 documents = docs.load()
 parent_splitter = RecursiveCharacterTextSplitter(chunk_size = 2000,chunk_overlap = 200)
 child_splitter = RecursiveCharacterTextSplitter(chunk_size = 400,chunk_overlap = 50)
-load_dotenv()
+
 
 #-------
 splitter = RecursiveCharacterTextSplitter(chunk_size=1000,chunk_overlap=200)
@@ -920,7 +934,9 @@ class AgenticRAG:
         )
         result = compression_retriever.invoke(query)
         return "\n\n".join(doc.page_content for doc in docs)
-        
+        # langchain Agent
+        def Bigneer_Retriever_Agent(self,query):
+            basic_retriver_agent = create_agent(self.llm,tools=)
     
         
 
