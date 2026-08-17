@@ -54,6 +54,8 @@ from langchain_community.document_loaders import PyPDFDirectoryLoader, PyPDFLoad
 from langchain_community.retrievers import BM25Retriever
 from langchain_classic.retrievers import EnsembleRetriever
 # autogen integration 
+from autogen_agentchat.agents import AssistantAgent
+from autogen_co
 
 docs = PyPDFDirectoryLoader("documents")
 documents = docs.load()
