@@ -54,9 +54,10 @@ from langchain_community.document_loaders import PyPDFDirectoryLoader, PyPDFLoad
 from langchain_community.retrievers import BM25Retriever
 from langchain_classic.retrievers import EnsembleRetriever
 # autogen integration 
+import asyncio
 from autogen_agentchat.agents import AssistantAgent
 from autogen_ext.models.openai import OpenAIChatCompletionClient
-from autogen_agentchat.messages import TextMessage
+from autogen_agentchat.messages import TextMessage,UserMessage
 from autogen_agentchat.teams import RoundRobinGroupChat
 from autogen_agentchat.ui import Console
 from autogen_agentchat.conditions import TextMentionTermination,HandoffTermination,FunctionalTermination,TextMessageTermination
@@ -980,6 +981,35 @@ class AgenticRAG:
         chain = agent_x1 | StrOutputParser()
         return chain.invoke({'messages':query})
 
+    def autogen_reasoning_agent(self,query):
+        agent_Basic = AssistantAgent(
+            name= "Reasoning Agent - Basic Retriever",
+            model_client=model_client,
+            tools = [self.basic_search]
+        )
+        agent_Intermidate = AssistantAgent(
+            name = "Reasoning Agent - Intermidiate Retriever",
+            model_client = model_client,
+            tools  = [hybrid_retriever],
+            system_prompt = "You are a Reasoning Intermidate agent"
+
+        )
+        agent_advanced = AssistantAgent(
+            name= "Reasoning Agent - Advanced Retriever",
+            model_client = model_client,
+            tools = [agent_Basic,agent_Intermidate,self.context_compression,tavily_search]
+        )
+
+
+
+        #for just return 
+        agent_x2 = AssistantAgent(
+            name = "Founder",
+            model_client= model_client,
+            tools= [agent_Basic,agent_Intermidate,agent_advanced]
+        )
+
+        return await agent_x2.run(task= [TextMessage(content=query)])
     
 
 
