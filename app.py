@@ -969,7 +969,21 @@ class AgenticRAG:
         """
         advanced_agent = create_agent(model = llm,tools=[basic_search,hybrid_retriever,context_compression,tavily_search])
         return advanced_agent.invoke({'messages':query})
+
+    ## Langchain agent 
+    def run_agent(self,query):
+        agent_x1 = create_agent(
+            model = self.llm,
+            tools = [self.Bigneer_Retriever_Agent,self.intermidate_retriever_agent,self.advanced_retriever_agent],
+            system_prompt = "You are Proffesional AiAgent"
+        )
+        chain = agent_x1 | StrOutputParser()
+        return chain.invoke({'messages':query})
+
     
+
+
+
 
     
         
