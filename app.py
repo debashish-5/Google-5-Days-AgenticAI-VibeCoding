@@ -1008,8 +1008,12 @@ class AgenticRAG:
             model_client= model_client,
             tools= [agent_Basic,agent_Intermidate,agent_advanced]
         )
+        async def agent_run():
+            result = await agent_x2.run(task= [TextMessage(content=query,source='user')])
+            return result.content
+        result = agent_run()
+        return result
 
-        return await agent_x2.run(task= [TextMessage(content=query)])
     
 
 
