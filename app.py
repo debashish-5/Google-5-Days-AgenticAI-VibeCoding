@@ -736,13 +736,6 @@ class hardcore:
         return result_v10
 
 
-def add(a,b): 
-    sum = a+b 
-    def mul2_sum(sum): 
-        return sum*2 
-
-    mul_sum = mul2_sum(sum)
-    return mul_sum
 
 
 class retriever:
@@ -1021,7 +1014,8 @@ class AgenticRAG:
             result = await agent_x2.run(task= [TextMessage(content=query,source='user')])
             return result.content
         result = agent_run()
-        return result
+        return result.content
+
 
     
 
