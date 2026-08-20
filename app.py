@@ -736,6 +736,15 @@ class hardcore:
         return result_v10
 
 
+def add(a,b): 
+    sum = a+b 
+    def mul2_sum(sum): 
+        return sum*2 
+
+    mul_sum = mul2_sum(sum)
+    return mul_sum
+
+
 class retriever:
     def __init__(self,llm = None, embeddings = None):
         self.llm = ChatGroq(
