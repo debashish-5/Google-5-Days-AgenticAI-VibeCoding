@@ -889,9 +889,9 @@ class AgenticRAG:
             db = FAISS.load_local(file,allow_dangerous_deserialization = True)
             retriever = db.as_retriever(search_kwargs={'k':3})
             result = retriever.invoke(query)
-            return '\n\n'.join(doc.page_content for doc in docs)
+            return '\n\n'.join(doc.page_content for doc in result)
         except Exception as e:
-            return 'Erorr Occurs during {e}.'
+            return f'Error occurs during search: {e}'
 
     @tool
     def hybrid_search(query:str,file_name:str = None) -> object:
@@ -907,8 +907,7 @@ class AgenticRAG:
             bm25_retriever.k= 3
             hybrid_retriever = EnsembleRetriever(retrievers=[sementic_retriever,bm25_retriever],weights=[0.6,0.4])
             hybrid_result = hybrid_retriever.invoke(query)
-            context = '\n\n'.join(doc.page_content for doc in hybrid_result)
-            return hybrid_result
+            return '\n\n'.join(doc.page_content for doc in hybrid_result)
         except Exception as e:
             return f"Error: Occurs in {e}"
     @tool
@@ -923,19 +922,17 @@ class AgenticRAG:
             return the compressed result 
             
         """
-        if file_name:
-            file = file_name
-        file = "faiss_index"
-        db = FAISS.load_local(file,allow_dangerous_deserialization=True)
+        file = file_name or "faiss_index"
+        db = FAISS.load_local(file, embeddings=Field_embeddings, allow_dangerous_deserialization=True)
         retriever = db.as_retriever(search_kwargs = {'k':10})
-        filteer = EmbeddingsFilter(embeddings=Embeddings,similarity_threshold=0.75)
+        filteer = EmbeddingsFilter(embeddings=Field_embeddings,similarity_threshold=0.75)
         #compression retriever
         compression_retriever = ContextualCompressionRetriever(
             base_compressor=filteer,
             base_retriever=retriever
         )
         result = compression_retriever.invoke(query)
-        return "\n\n".join(doc.page_content for doc in docs)
+        return "\n\n".join(doc.page_content for doc in result)
         # langchain Agent
     @tool
     def Bigneer_Retriever_Agent(query:str) -> list:
