@@ -1332,6 +1332,95 @@ def home():
 
 retriever_llm = retriever_x_llm()
 retriever = retriever()
+
+INDEX_FOLDERS = {
+    "faiss-hnsw": "HNSW_faiss",
+    "faiss-pq": "PQ_faiss",
+    "faiss-ivf": "IVF_faiss",
+    "faiss-ivfpq": "IVFPQ_faiss",
+    "faiss-flat": "faiss_index",
+}
+
+
+def _local_retriever(index_name, k=6):
+    db = FAISS.load_local(
+        INDEX_FOLDERS[index_name],
+        embeddings=retriever_llm.embeddings,
+        allow_dangerous_deserialization=True,
+    )
+    return db.as_retriever(search_kwargs={"k": k})
+
+
+def _source_data(retrieved_docs):
+    sources, seen = [], set()
+    for doc in retrieved_docs:
+        metadata = doc.metadata or {}
+        title = os.path.basename(metadata.get("source", "Knowledge base"))
+        page = metadata.get("page")
+        label = f"{title}, p.{page + 1}" if isinstance(page, int) else title
+        if label not in seen:
+            seen.add(label)
+            sources.append({"title": label, "snippet": (doc.page_content or "")[:500], "score": 0.85})
+    return sources
+
+
+def _answer_from_docs(question, retrieved_docs, history, instruction=""):
+    context = "\n\n---\n\n".join(doc.page_content for doc in retrieved_docs)
+    history_text = "\n".join(
+        f"{item.get('role', 'user')}: {item.get('content', '')}" for item in history[-6:]
+    )
+    prompt = ChatPromptTemplate.from_template(
+        "You are a precise technical teacher. Use the retrieved context. "
+        "If it is insufficient, say what is missing instead of inventing facts.\n"
+        "{instruction}\nConversation: {history}\nContext: {context}\nQuestion: {question}"
+    )
+    return retriever_llm.llm.invoke(prompt.invoke({
+        "instruction": instruction, "history": history_text,
+        "context": context or "No relevant context found.", "question": question,
+    })).content
+
+
+def _query_variants(question, count):
+    prompt = ChatPromptTemplate.from_template(
+        "Rewrite this question into {count} focused search queries, one per line.\n{question}"
+    )
+    result = retriever_llm.llm.invoke(prompt.invoke({"question": question, "count": count}))
+    variants = [line.strip(" -0123456789.") for line in result.content.splitlines() if line.strip()]
+    return variants[:count] or [question]
+
+
+@traceable(name="mode_retrieval")
+def run_retrieval_mode(question, index_name, mode, history):
+    local_retriever = _local_retriever(index_name, 8 if mode in {"deep", "hardcore"} else 5)
+    if mode == "standard":
+        retrieved = local_retriever.invoke(question)
+        answer = _answer_from_docs(question, retrieved, history)
+    elif mode == "agentic":
+        search_tool = create_retriever_tool(
+            local_retriever, name="local_knowledge_search",
+            description="Search the selected local knowledge base.",
+        )
+        result = create_agent(
+            model=retriever_llm.llm, tools=[search_tool, tavily_search],
+            system_prompt="Search local knowledge first; use web search only for current external facts.",
+        ).invoke({"messages": [{"role": "user", "content": question}]})
+        answer = result["messages"][-1].content
+        retrieved = local_retriever.invoke(question)
+    else:
+        candidates = []
+        for variant in _query_variants(question, 3 if mode == "deep" else 5):
+            candidates.extend(local_retriever.invoke(variant))
+        unique = {}
+        for doc in candidates:
+            key = (doc.metadata.get("source"), doc.metadata.get("page"), doc.page_content[:120])
+            unique[key] = doc
+        retrieved = list(unique.values())[:12]
+        instruction = ("Synthesize the different search angles and distinguish evidence from inference."
+                       if mode == "deep" else
+                       "Reconcile all evidence, prefer specific passages, and include caveats.")
+        answer = _answer_from_docs(question, retrieved, history, instruction)
+    return {"answer": answer, "sources": _source_data(retrieved)}
+
 @app.route('/chat', methods=['POST'])
 @traceable(name = "chat_endpoint")
 def chat():
@@ -1383,7 +1472,12 @@ def chat():
 
         return jsonify({"answer": answer, "sources": sources})
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        error_text = str(e)
+        if "401" in error_text or "invalid_api_key" in error_text.lower():
+            return jsonify({
+                "error": "Groq authentication failed. Update GROQ_API_KEY in your .env file and restart Flask."
+            }), 503
+        return jsonify({"error": error_text}), 500
 
 
 

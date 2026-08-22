@@ -780,8 +780,8 @@ async function send(){
       body: JSON.stringify({ message: text, history, vector_store: selectedIndex, mode: selectedMode })
     });
 
-    if (!res.ok) throw new Error(`Server responded ${res.status}`);
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || `Server responded ${res.status}`);
 
     typingRow.remove();
     const { row, bubble } = addRow('assistant');
