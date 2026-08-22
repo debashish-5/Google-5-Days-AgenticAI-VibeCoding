@@ -1019,7 +1019,7 @@ class AgenticRAG:
 
 
 
-self.llm = ChatGroq(
+llm = ChatGroq(
     model="openai/gpt-oss-120b",
     api_key=os.getenv("GROQ_API_KEY")
 )
