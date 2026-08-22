@@ -1,5 +1,5 @@
 ﻿from chromadb import Embeddings
-from envs.langgraph_env.Lib import re
+#from envs.langgraph_env.Lib import re
 from langchain_core.prompts import PromptTemplate
 from langchain_groq import ChatGroq
 from langchain_classic.chains import ConversationalRetrievalChain
@@ -44,9 +44,9 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain_classic.retrievers import ContextualCompressionRetriever
 from langchain_classic.retrievers.document_compressors import EmbeddingsFilter,LLMChainExtractor,LLMChainFilter,DocumentCompressorPipeline
 #selfquery retriever
-from langchain_classic.chains.self_query_retriever import SelfQueryRetriever
+from langchain_classic.retrievers.self_query.base import SelfQueryRetriever
 #parent child retriever
-from langchain_classic.retrievers import ParentChildRetriever
+from langchain_classic.retrievers import ParentDocumentRetriever
 from langchain_community.docstore.in_memory import InMemoryDocstore
 from langchain_classic.storage import InMemoryStore
 import faiss
@@ -148,7 +148,7 @@ os.environ['PINECONE_API_KEY'] = api_key
 def pinecone_retrive(query):
 # Initialize the Groq LLM
     llm = ChatGroq(
-        model="llama-3.1-8b-instant",
+        model="openai/gpt-oss-120b",
         api_key=os.getenv("GROQ_API_KEY")
     )
 
@@ -230,10 +230,10 @@ class retriever_x_llm:
     @traceable(name="init_setup")
     def __init__(self,llm = None, embeddings = None):
         self.llm = ChatGroq(
-            model="llama-3.1-8b-instant",
+            model="openai/gpt-oss-120b",
             api_key=os.getenv("GROQ_API_KEY")
-        
         )
+
         # 1. Initialize the exact same embedding model used during saving
         self.embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
         self.condense_question_prompt = """
@@ -519,7 +519,7 @@ class Deeper:
         index = faiss.IndexFlatL2(dimension)
         vectorstore = FAISS(embeddings = Field_embeddings, index = index,docstore = InMemoryDocstore(), index_to_docstore_id = {})
         store = InMemoryStore()
-        retriever = ParentChildRetriever(
+        retriever = ParentDocumentRetriever(
             vectorstore = vectorstore,
             docstore = store,
             parent_splitter = parent_splitter,
@@ -1015,6 +1015,8 @@ class AgenticRAG:
             return result.content
         result = agent_run()
         return result.content
+
+
 
 
     
