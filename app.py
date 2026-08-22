@@ -63,8 +63,9 @@ from autogen_agentchat.ui import Console
 from autogen_agentchat.conditions import TextMentionTermination,HandoffTermination,FunctionalTermination,TextMessageTermination
 load_dotenv()
 # autogen
-model_client = OpenAIChatCompletionClient(model="llama-3.1-8b-instant",
+model_client = OpenAIChatCompletionClient(model="openai/gpt-oss-120b",
                                           base_url = "https://api.groq.com/v1/",
+                                          api_key = os.getenv('GROQ_API_KEY'),
                                           model_info = {
                                               'vision':True,
                                               'function_calling':True,
@@ -741,9 +742,8 @@ class hardcore:
 class retriever:
     def __init__(self,llm = None, embeddings = None):
         self.llm = ChatGroq(
-            model="llama-3.1-8b-instant",
+            model="openai/gpt-oss-120b",
             api_key=os.getenv("GROQ_API_KEY")
-        
         )
         # 1. Initialize the exact same embedding model used during saving
         self.embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
@@ -751,11 +751,6 @@ class retriever:
 
     @traceable(name = "hnsw")
     def hnsw_retrive(self,query):
-        llm = ChatGroq(
-            model="llama-3.1-8b-instant",
-            api_key=os.getenv("GROQ_API_KEY")
-        
-        )
         # 1. Initialize the exact same embedding model used during saving
         # use self.embeddings for consistency
         embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
@@ -780,11 +775,6 @@ class retriever:
     ## PQ
     @traceable(name = "pq")
     def pq_retrive(self,query):
-        llm = ChatGroq(
-            model="llama-3.1-8b-instant",
-            api_key=os.getenv("GROQ_API_KEY")
-        
-        )
         # 1. Initialize the exact same embedding model used during saving
         # use self.embeddings initialized in constructor
         # 2. Load the index from your local folder
@@ -820,8 +810,8 @@ class AgenticRAG:
     @traceable(name= "AgenticRAG_init")
     def __init__(self,llm = None,tools=None):
         self.llm = ChatGroq(
-            model = 'llama-3.1-8b-instant',
-            api_key = os.getenv("GROQ_API_KEY")
+            model="openai/gpt-oss-120b",
+            api_key=os.getenv("GROQ_API_KEY")
         )
         self.duckduckgosearch = DuckDuckGoSearchResults()
         self.basic_search
@@ -1029,8 +1019,8 @@ class AgenticRAG:
 
 
 
-llm = ChatGroq(
-    model="llama-3.1-8b-instant",
+self.llm = ChatGroq(
+    model="openai/gpt-oss-120b",
     api_key=os.getenv("GROQ_API_KEY")
 )
 
