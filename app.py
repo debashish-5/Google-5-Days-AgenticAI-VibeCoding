@@ -970,6 +970,110 @@ class AgenticRAG:
             tools = [self.Bigneer_Retriever_Agent,self.intermidate_retriever_agent,self.advanced_retriever_agent],
             system_prompt = "You are Proffesional AiAgent"
         )
+        INDEX_FOLDERS = {
+            "faiss-hnsw": "HNSW_faiss",
+            "faiss-pq": "PQ_faiss",
+            "faiss-ivf": "IVF_faiss",
+            "faiss-ivfpq": "IVFPQ_faiss",
+            "faiss-flat": "faiss_index",
+        }
+
+
+        def _local_retriever(index_name, k=6):
+            folder = INDEX_FOLDERS.get(index_name, INDEX_FOLDERS["faiss-hnsw"])
+            db = FAISS.load_local(
+                folder_path=folder,
+                embeddings=retriever_llm.embeddings,
+                allow_dangerous_deserialization=True,
+            )
+            return db.as_retriever(search_kwargs={"k": k})
+
+
+        def _source_data(retrieved_docs):
+            sources = []
+            seen = set()
+            for doc in retrieved_docs:
+                metadata = doc.metadata or {}
+                title = os.path.basename(metadata.get("source", "Knowledge base"))
+                page = metadata.get("page")
+                label = f"{title}, p.{page + 1}" if isinstance(page, int) else title
+                if label in seen:
+                    continue
+                seen.add(label)
+                sources.append({"title": label, "snippet": (doc.page_content or "")[:500], "score": 0.85})
+            return sources
+
+
+        def _answer_from_docs(question, retrieved_docs, history=None, instruction=""):
+            context = "\n\n---\n\n".join(doc.page_content for doc in retrieved_docs)
+            history_text = "\n".join(
+                f"{item.get('role', 'user')}: {item.get('content', '')}" for item in (history or [])[-6:]
+            )
+            answer_prompt = ChatPromptTemplate.from_template(
+                """You are a precise technical teacher. Answer using the retrieved context.
+                If it is insufficient, say what is missing instead of inventing facts.
+                Explain reasoning briefly and include practical examples.
+                {instruction}
+                Conversation: {history}
+                Retrieved context: {context}
+                User question: {question}"""
+            )
+            result = retriever_llm.llm.invoke(answer_prompt.invoke({
+                "instruction": instruction,
+                "history": history_text,
+                "context": context or "No relevant local context was found.",
+                "question": question,
+            }))
+            return result.content
+
+
+        def _query_variants(question, count):
+            prompt = ChatPromptTemplate.from_template(
+                "Rewrite this question into {count} distinct focused search queries. "
+                "Return one query per line and nothing else.\nQuestion: {question}"
+            )
+            result = retriever_llm.llm.invoke(prompt.invoke({"question": question, "count": count}))
+            variants = [line.strip(" -0123456789.") for line in result.content.splitlines() if line.strip()]
+            return variants[:count] or [question]
+
+
+        @traceable(name="mode_retrieval")
+        def run_retrieval_mode(question, index_name, mode, history):
+            retriever = _local_retriever(index_name, k=8 if mode in {"deep", "hardcore"} else 5)
+            if mode == "standard":
+                retrieved = retriever.invoke(question)
+                answer = _answer_from_docs(question, retrieved, history)
+            elif mode == "agentic":
+                search_tool = create_retriever_tool(
+                    retriever, name="local_knowledge_search",
+                    description="Search the selected local knowledge base for factual context.",
+                )
+                agent_result = create_agent(
+                    model=retriever_llm.llm,
+                    tools=[search_tool, tavily_search],
+                    system_prompt=("You are an agentic research assistant. Search local knowledge "
+                                   "first, use web search only when current external facts are needed, "
+                                   "and give a concise cited answer."),
+                ).invoke({"messages": [{"role": "user", "content": question}]})
+                answer = agent_result["messages"][-1].content
+                retrieved = retriever.invoke(question)
+            else:
+                variants = _query_variants(question, 3 if mode == "deep" else 5)
+                candidates = []
+                for variant in variants:
+                    candidates.extend(retriever.invoke(variant))
+                unique = {}
+                for doc in candidates:
+                    key = (doc.metadata.get("source"), doc.metadata.get("page"), doc.page_content[:120])
+                    unique[key] = doc
+                retrieved = list(unique.values())[:12]
+                instruction = ("Use the different search angles to synthesize overlapping evidence "
+                               "and distinguish direct evidence from inference." if mode == "deep" else
+                               "Reconcile all evidence, prefer specific passages, and structure the "
+                               "answer with caveats.")
+                answer = _answer_from_docs(question, retrieved, history, instruction)
+            return {"answer": answer, "sources": _source_data(retrieved)}
+
         chain = agent_x1 | StrOutputParser()
         return chain.invoke({'messages':query})
 
@@ -1052,9 +1156,15 @@ def chat():
     data = request.get_json()
     user_query = data.get("message")  # Get the user query from the request
     faiss_model = data.get("vector_store")  # Get the selected vector store from the request
+    mode = data.get("mode", "standard")
+    history = data.get("history", [])
     if not user_query or not faiss_model:
         return jsonify({"error": "Missing user query or vector store selection"}), 400
+    if mode not in {"standard", "agentic", "deep", "hardcore"}:
+        return jsonify({"error": "Unknown retrieval mode"}), 400
     try:
+        if mode != "standard" or faiss_model != "pinecone":
+            return jsonify(run_retrieval_mode(user_query, faiss_model, mode, history))
         if faiss_model == "faiss-hnsw":
             result = retriever_llm.hnsw_retrive(user_query)
             answer = result["messages"][-1].content
