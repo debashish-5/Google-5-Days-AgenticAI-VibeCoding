@@ -1198,10 +1198,10 @@ class AgenticRAG:
             tools= [agent_Basic,agent_Intermidate,agent_advanced]
         )
         async def agent_run():
-            result = await agent_x2.run(task= [TextMessage(content=query,source='user')])
-            return result.content
-        result = agent_run()
-        return result.content
+            return await agent_x2.run(task=[TextMessage(content=query, source='user')])
+        result = asyncio.run(agent_run())
+        messages = getattr(result, "messages", [])
+        return getattr(messages[-1], "content", str(result)) if messages else str(result)
 
 
 
