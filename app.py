@@ -141,7 +141,8 @@ prompt = PromptTemplate.from_template(
 
 api_key = os.getenv("PINECONE_API_KEY")
 
-os.environ['PINECONE_API_KEY'] = api_key
+if api_key:
+    os.environ['PINECONE_API_KEY'] = api_key
 
 
 
@@ -379,13 +380,13 @@ class retriever_x_llm:
 class Deeper:
     @traceable(name = "DeepSearch_init")
     def __init__(self,llm = None):
-        llm = ChatGroq(
+        self.llm = llm or ChatGroq(
             model="llama-3.1-8b-instant",
             api_key=os.getenv("GROQ_API_KEY")
         )
     @traceable(name = "Deepth Level 1: Query Rewriting")
     def Lv1_query_rewriting(self,query,file_name):
-        db = FAISS.load_local(file_name)
+        db = FAISS.load_local(file_name, embeddings=Field_embeddings, allow_dangerous_deserialization=True)
         retriever = db.as_retriever(search_kwargs = {"k":3})
 
         rewrite_prompt = ChatPromptTemplate.from_template(
@@ -412,7 +413,8 @@ class Deeper:
             response = self.llm.invoke(prompt)
             return response.content.strip()
         ##final output retriever + llm
-        docs = retriever.invoke(rewrite_prompt({'question': query}))
+        rewritten_query = rewrite_query(query)
+        docs = retriever.invoke(rewritten_query)
         context = "\n\n".join(doc.page_content for doc in docs)
         final_answer_prompt = ChatPromptTemplate.from_template(
             """
@@ -432,7 +434,7 @@ class Deeper:
 
     @traceable(name = "Deepth Level 2: Multiquery Retriever")
     def Lv2_multiquery_rewriting(self,query,file_name):
-        db = FAISS.load_local(file_name)
+        db = FAISS.load_local(file_name, embeddings=Field_embeddings, allow_dangerous_deserialization=True)
         retriever = db.as_retriever(search_kwargs = {'k':3})
         multi_retriever = MultiQueryRetriever.from_llm(
             retriever= retriever,
@@ -458,7 +460,7 @@ class Deeper:
 
     @traceable(name = "HyDE: Hypothitical Documents Embeddings with LLM")
     def Lv3_HyDE_with_LLM(self,query,file_name):
-        db = FAISS.load_local(file_name)
+        db = FAISS.load_local(file_name, embeddings=Field_embeddings, allow_dangerous_deserialization=True)
         retriever = db.as_retriever(search_kwargs = {'k':3})
         #prompt
         hyde_prompt = ChatPromptTemplate.from_template(
@@ -478,8 +480,8 @@ class Deeper:
             prompt = hyde_prompt.invoke({'question': question})
             response = self.llm.invoke(prompt)
             return response.content
-        docs = generate_hypothetical_document(query)
-        
+        hypothetical_document = generate_hypothetical_document(query)
+        docs = retriever.invoke(hypothetical_document)
         context = '\n\n'.join(doc.page_content for doc in docs)
 
         #complete the answer with llm
@@ -498,7 +500,7 @@ class Deeper:
         return result.content 
     @traceable(name = "Query Decomposition")
     def Lv4_Query_Decomposition(self,query,file_name):
-        db = FAISS.load_local(file_name)
+        db = FAISS.load_local(file_name, embeddings=Field_embeddings, allow_dangerous_deserialization=True)
         retriever = db.as_retriever(search_kwargs = {'k':3})
         decompose_prompt = ChatPromptTemplate.from_template("""
         You are an expert at breaking complex questions into smaller independent search questions.
@@ -513,6 +515,20 @@ class Deeper:
         Question:
         {question}
         """)
+        response = self.llm.invoke(decompose_prompt.invoke({"question": query}))
+        queries = [line.strip(" -0123456789.") for line in response.content.splitlines() if line.strip()]
+        all_docs = []
+        for search_query in queries[:6] or [query]:
+            all_docs.extend(retriever.invoke(search_query))
+        unique_docs = {}
+        for doc in all_docs:
+            key = (doc.metadata.get("source"), doc.metadata.get("page"), doc.page_content[:120])
+            unique_docs[key] = doc
+        context = "\n\n".join(doc.page_content for doc in unique_docs.values())
+        answer_prompt = ChatPromptTemplate.from_template(
+            "Answer only using this context.\nContext: {context}\nQuestion: {question}"
+        )
+        return self.llm.invoke(answer_prompt.invoke({"context": context, "question": query})).content
 
     @traceable(name = "Parent Child Retrieval")
     def Lv5_Parent_Child_Retrieval(self,query,file_name):
@@ -564,7 +580,7 @@ class Deeper:
             unique_docs[key] = doc
         docs = list(unique_docs.values())
         context = '\n\n'.join(doc.page_content for doc in docs if docs)
-        answer_prompt = ChatPromptTemplate.from_templaye(
+        answer_prompt = ChatPromptTemplate.from_template(
             """
             Answer only using the context.
             Context:
@@ -578,7 +594,7 @@ class Deeper:
         return result.content
     @traceable(name = "EmbeddingFilterRetriever")
     def Lv6_EmbeddingFilterRetriever(self,query,file_name):
-        db = FAISS.load_local(file_name)
+        db = FAISS.load_local(file_name, embeddings=Field_embeddings, allow_dangerous_deserialization=True)
         retriever = db.as_retriever(search_kwargs = {'k':3})
         filter_emb = EmbeddingsFilter(
             embeddings = Field_embeddings,
@@ -604,7 +620,7 @@ class Deeper:
         return result
     @traceable(name = "LLMChainExctor")
     def Lv7_LLMChainExtractor(self,query,file_name):
-        db = FAISS.load_local(file_name)
+        db = FAISS.load_local(file_name, embeddings=Field_embeddings, allow_dangerous_deserialization=True)
         retriever = db.as_retriever(search_kwargs=  {'k':5})
         compressor = LLMChainExtractor.from_llm(self.llm)
         compression_retriever = ContextualCompressionRetriever(
@@ -630,7 +646,7 @@ class Deeper:
 
     @traceable(name = "LLMChainFilter")
     def Lv8_LLMChainFilter(self,query,file_name):
-        db = FAISS.load_local(file_name)
+        db = FAISS.load_local(file_name, embeddings=Field_embeddings, allow_dangerous_deserialization=True)
         retriever = db.as_retriever(search_kwargs=  {'k':5})
         compressor = LLMChainFilter.from_llm(self.llm)
         compression_retriever = ContextualCompressionRetriever(
@@ -656,7 +672,7 @@ class Deeper:
 
     @traceable(name = "DocumentCompressorPipeline")
     def Lv9_DocumentCompressorPipeline(self,query,file_name):
-        db = FAISS.load_local(file_name)
+        db = FAISS.load_local(file_name, embeddings=Field_embeddings, allow_dangerous_deserialization=True)
         retriever = db.as_retriever(search_kwargs = {'k':20})
         #embedding filter
         embedding_filter = EmbeddingsFilter(
@@ -692,20 +708,20 @@ class Deeper:
         {query}
         """)
         chain = prompt | self.llm | StrOutputParser()
-        result = chain.invoke({'query':query})
+        result = chain.invoke({'query':query, 'context':context})
         return result
 
     @traceable(name = "CrossEncoderReranker")
     def Lv10_CrossEncoderReranker(self,query,file_name):
-        db = FAISS.load_local(file_name)
+        db = FAISS.load_local(file_name, embeddings=Field_embeddings, allow_dangerous_deserialization=True)
         retriever = db.as_retriever(search_kwargs = {'k':20})
         reranker = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2")
         docs = retriever.invoke(query)
         pairs = [[query,doc.page_content] for doc in docs]
         scores = reranker.predict(pairs)
         # Sort documents by their reranked scores
-        ranked_docs = [doc for _, doc in sorted(zip(scores, docs), reverse=True)]
-        context = '\n\n'.join(doc.page_content for doc in docs)
+        ranked_docs = [doc for _, doc in sorted(zip(scores, docs), key=lambda item: item[0], reverse=True)]
+        context = '\n\n'.join(doc.page_content for doc in ranked_docs)
         prompt = PromptTemplate.from_template("""
         Answer the question using only the context provided.
         Question:
@@ -723,18 +739,11 @@ class Deeper:
 class hardcore:
     @traceable(name = "Hardcore")
     def fullPower(self,query,file_name):
-        deeper = Deeper()
-        result_v1 = deeper.Lv1_query_rewriting(query,file_name)
-        result_v2 = deeper.Lv2_multiquery_rewriting(result_v1,file_name)
-        result_v3 = deeper.Lv3_HyDE_with_LLM(result_v2,file_name)
-        result_v4 = deeper.Lv4_Query_Decomposition(result_v3,file_name)
-        result_v5 = deeper.Lv5_Parent_Child_Retrieval(result_v4,file_name)
-        result_v6 = deeper.Lv6_EmbeddingFilterRetriever(result_v5,file_name)
-        result_v7 = deeper.Lv7_LLMChainExtractor(result_v6,file_name)
-        result_v8 = deeper.Lv8_LLMChainFilter(result_v7,file_name)
-        result_v9 = deeper.Lv9_DocumentCompressorPipeline(result_v8,file_name)
-        result_v10 = deeper.Lv10_CrossEncoderReranker(result_v9,file_name)
-        return result_v10
+        index_name = next(
+            (name for name, folder in INDEX_FOLDERS.items() if folder == file_name),
+            file_name,
+        )
+        return run_retrieval_mode(query, index_name, "hardcore", [])['answer']
 
 
 
@@ -814,10 +823,6 @@ class AgenticRAG:
             api_key=os.getenv("GROQ_API_KEY")
         )
         self.duckduckgosearch = DuckDuckGoSearchResults()
-        self.basic_search
-        self.hybrid_search
-        self.context_compression
-        self.duckduckgosearch
         
 
     @tool
@@ -970,6 +975,97 @@ class AgenticRAG:
             tools = [self.Bigneer_Retriever_Agent,self.intermidate_retriever_agent,self.advanced_retriever_agent],
             system_prompt = "You are Proffesional AiAgent"
         )
+        INDEX_FOLDERS = {
+            "faiss-hnsw": "HNSW_faiss",
+            "faiss-pq": "PQ_faiss",
+            "faiss-ivf": "IVF_faiss",
+            "faiss-ivfpq": "IVFPQ_faiss",
+            "faiss-flat": "faiss_index",
+        }
+
+
+        def _local_retriever(index_name, k=6):
+            db = FAISS.load_local(
+                INDEX_FOLDERS[index_name],
+                embeddings=retriever_llm.embeddings,
+                allow_dangerous_deserialization=True,
+            )
+            return db.as_retriever(search_kwargs={"k": k})
+
+
+        def _source_data(retrieved_docs):
+            sources, seen = [], set()
+            for doc in retrieved_docs:
+                metadata = doc.metadata or {}
+                title = os.path.basename(metadata.get("source", "Knowledge base"))
+                page = metadata.get("page")
+                label = f"{title}, p.{page + 1}" if isinstance(page, int) else title
+                if label not in seen:
+                    seen.add(label)
+                    sources.append({"title": label, "snippet": doc.page_content[:500], "score": 0.85})
+            return sources
+
+
+        def _answer_from_docs(question, retrieved_docs, history, instruction=""):
+            context = "\n\n---\n\n".join(doc.page_content for doc in retrieved_docs)
+            history_text = "\n".join(
+                f"{item.get('role', 'user')}: {item.get('content', '')}" for item in history[-6:]
+            )
+            prompt = ChatPromptTemplate.from_template(
+                "You are a precise technical teacher. Use the retrieved context. "
+                "If it is insufficient, say what is missing instead of inventing facts.\n"
+                "{instruction}\nConversation: {history}\nContext: {context}\nQuestion: {question}"
+            )
+            return retriever_llm.llm.invoke(prompt.invoke({
+                "instruction": instruction,
+                "history": history_text,
+                "context": context or "No relevant context found.",
+                "question": question,
+            })).content
+
+
+        def _query_variants(question, count):
+            prompt = ChatPromptTemplate.from_template(
+                "Rewrite this question into {count} focused search queries, one per line.\n{question}"
+            )
+            result = retriever_llm.llm.invoke(prompt.invoke({"question": question, "count": count}))
+            variants = [line.strip(" -0123456789.") for line in result.content.splitlines() if line.strip()]
+            return variants[:count] or [question]
+
+
+        @traceable(name="mode_retrieval")
+        def run_retrieval_mode(question, index_name, mode, history):
+            local_retriever = _local_retriever(index_name, 8 if mode in {"deep", "hardcore"} else 5)
+            if mode == "standard":
+                retrieved = local_retriever.invoke(question)
+                answer = _answer_from_docs(question, retrieved, history)
+            elif mode == "agentic":
+                search_tool = create_retriever_tool(
+                    local_retriever,
+                    name="local_knowledge_search",
+                    description="Search the selected local knowledge base.",
+                )
+                result = create_agent(
+                    model=retriever_llm.llm,
+                    tools=[search_tool, tavily_search],
+                    system_prompt="Search local knowledge first; use web search only for current external facts.",
+                ).invoke({"messages": [{"role": "user", "content": question}]})
+                answer = result["messages"][-1].content
+                retrieved = local_retriever.invoke(question)
+            else:
+                candidates = []
+                for variant in _query_variants(question, 3 if mode == "deep" else 5):
+                    candidates.extend(local_retriever.invoke(variant))
+                unique = {}
+                for doc in candidates:
+                    key = (doc.metadata.get("source"), doc.metadata.get("page"), doc.page_content[:120])
+                    unique[key] = doc
+                retrieved = list(unique.values())[:12]
+                instruction = "Synthesize the different search angles and distinguish evidence from inference." \
+                    if mode == "deep" else "Reconcile all evidence, prefer specific passages, and include caveats."
+                answer = _answer_from_docs(question, retrieved, history, instruction)
+            return {"answer": answer, "sources": _source_data(retrieved)}
+
         INDEX_FOLDERS = {
             "faiss-hnsw": "HNSW_faiss",
             "faiss-pq": "PQ_faiss",
@@ -1153,7 +1249,7 @@ retriever = retriever()
 def chat():
 
 
-    data = request.get_json()
+    data = request.get_json(silent=True) or {}
     user_query = data.get("message")  # Get the user query from the request
     faiss_model = data.get("vector_store")  # Get the selected vector store from the request
     mode = data.get("mode", "standard")
