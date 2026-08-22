@@ -980,7 +980,7 @@ class AgenticRAG:
 
 
         def _local_retriever(index_name, k=6):
-            folder = INDEX_FOLDERS.get(index_name, INDEX_FOLDERS["faiss-hnsw"])
+            folder = INDEX_FOLDERS[index_name]
             db = FAISS.load_local(
                 folder_path=folder,
                 embeddings=retriever_llm.embeddings,
@@ -1162,6 +1162,8 @@ def chat():
         return jsonify({"error": "Missing user query or vector store selection"}), 400
     if mode not in {"standard", "agentic", "deep", "hardcore"}:
         return jsonify({"error": "Unknown retrieval mode"}), 400
+    if faiss_model not in set(INDEX_FOLDERS) and faiss_model != "pinecone":
+        return jsonify({"error": "Unknown vector store selection"}), 400
     try:
         if mode != "standard" or faiss_model != "pinecone":
             return jsonify(run_retrieval_mode(user_query, faiss_model, mode, history))
