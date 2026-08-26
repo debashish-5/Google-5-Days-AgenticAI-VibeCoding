@@ -1294,7 +1294,7 @@ class AgenticRAG:
         messages = getattr(result, "messages", [])
         return getattr(messages[-1], "content", str(result)) if messages else str(result)
 
-
+# LangGraph  + Autogen mixing 
 
 
     
