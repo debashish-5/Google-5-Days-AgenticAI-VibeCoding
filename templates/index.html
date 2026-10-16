@@ -572,6 +572,15 @@
             </div>
             <svg class="check" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17L4 12" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </div>
+
+          <div class="index-option" data-value="neo4j-graph">
+            <div class="icon">G</div>
+            <div class="meta">
+              <div class="name">Neo4j Graph RAG</div>
+              <div class="desc">Searches Neo4j chunks and connected graph context</div>
+            </div>
+            <svg class="check" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17L4 12" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
         </div>
       </div>
       <label for="mode-picker" class="sr-only">Retrieval mode</label>
@@ -595,12 +604,12 @@
      {
        "message": "the user's question",
        "history": [{"role": "user"|"assistant", "content": "..."}, ...],
-      "vector_store": "faiss-flat" | "faiss-hnsw" | "faiss-ivf" | "pinecone",
+      "vector_store": "faiss-flat" | "faiss-hnsw" | "faiss-pq" | "faiss-ivf" | "faiss-ivfpq" | "pinecone" | "neo4j-graph",
       "mode": "standard" | "agentic" | "deep" | "hardcore"
      }
    "vector_store" reflects whatever the user picked in the dropdown above the
    input box, so your route can branch to the matching retriever. Default is
-   "faiss-flat".
+   "faiss-hnsw".
 
    Expected JSON response:
      {

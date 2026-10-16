@@ -40,7 +40,7 @@ This repo serves a dual purpose:
 | :--- | :--- |
 | **Backend & Web** | ![Flask](https://img.shields.io/badge/Flask-000000?style=for-the-badge&logo=flask&logoColor=white) ![Python](https://img.shields.io/badge/Python_3.10+-3776AB?style=for-the-badge&logo=python&logoColor=white) |
 | **Orchestration** | ![LangChain](https://img.shields.io/badge/LangChain-121212?style=for-the-badge&logo=chainlink&logoColor=white) |
-| **Vector Engines** | ![FAISS](https://img.shields.io/badge/Meta_FAISS-0467DF?style=for-the-badge&logo=meta&logoColor=white) ![Pinecone](https://img.shields.io/badge/Pinecone_DB-000000?style=for-the-badge&logo=pinecone&logoColor=white) |
+| **Retrieval & Data Stores** | ![FAISS](https://img.shields.io/badge/Meta_FAISS-0467DF?style=for-the-badge&logo=meta&logoColor=white) ![Pinecone](https://img.shields.io/badge/Pinecone_DB-000000?style=for-the-badge&logo=pinecone&logoColor=white) ![Neo4j](https://img.shields.io/badge/Neo4j_Graph_RAG-4581C3?style=for-the-badge&logo=neo4j&logoColor=white) |
 | **LLM Inference** | ![Groq](https://img.shields.io/badge/Groq_LPU-F05023?style=for-the-badge&logo=fastapi&logoColor=white) |
 | **Embeddings** | ![HuggingFace](https://img.shields.io/badge/HuggingFace_MiniLM-FFD21E?style=for-the-badge&logo=huggingface&logoColor=black) |
 | **Search & Web AI** | ![Tavily](https://img.shields.io/badge/Tavily_Search_API-4B0082?style=for-the-badge&logo=google-chrome&logoColor=white) |
@@ -58,17 +58,22 @@ flowchart TD
         A[Source PDFs in documents/] --> B[RecursiveCharacterTextSplitter]
         B --> C[HuggingFace Embeddings: MiniLM-L6-v2]
         C --> D[(FAISS Vector Stores: HNSW / PQ / IVF / IVFPQ)]
+        C --> D2[(Neo4j Chunk Vector Index)]
+        D2 --> D3[Optional graph-neighbor expansion]
     end
 
     subgraph Query Execution & Agent Routing
         E[User Query via Flask UI] --> F{Query Rewriter / Agent Router}
         F -->|Dense + Sparse| G[Hybrid Retriever: BM25 + FAISS]
         F -->|Cloud Fallback| H[Pinecone Vector Store]
+        F -->|Graph Retrieval| D2
         F -->|External Knowledge| I[Tavily Web Search Tool]
     end
 
     subgraph Response Generation
         G --> J[Context Aggregator]
+        D2 --> J
+        D3 --> J
         H --> J
         I --> J
         J --> K{Groq API Online?}
@@ -101,12 +106,17 @@ This project grows daily as we learn and implement deeper RAG paradigms:
 * Query rewriting pipelines to fix ambiguous user inputs.
 
 
-* [x] **Level 4: Agentic RAG & Cloud Integration**
+* [x] **Level 4: Graph RAG**
+* Neo4j vector retrieval over embedded chunks.
+* Optional expansion with directly connected graph nodes and relationships.
+
+
+* [x] **Level 5: Agentic RAG & Cloud Integration**
 * Agent tool selection with **Tavily Web Search** for real-time external knowledge.
 * Integration with **Pinecone Vector Store** for cloud-scale retrieval.
 
 
-* [x] **Level 5: Observability & Production Hardening**
+* [x] **Level 6: Observability & Production Hardening**
 * End-to-end tracing with **LangSmith**.
 * Local fallback mechanisms when external APIs (Groq/Pinecone) fail.
 * Multi-backend architecture (`app.py` vs `app_new.py`).
@@ -136,6 +146,9 @@ Understanding vector indexing is crucial for production RAG scale:
 ├── PQ_faiss/                  # Pre-built FAISS index (Product Quantized)
 ├── IVF_faiss/                 # Pre-built FAISS index (Inverted File)
 ├── IVFPQ_faiss/               # Pre-built FAISS index (Combined IVF-PQ)
+├── GRAPH RAG/                 # Graph extraction artifact used in the Neo4j learning workflow
+├── Knowledge Graph .ipynb     # Neo4j chunk ingestion and vector-index walkthrough
+├── graph_rag.py               # Shared Neo4j vector and graph-neighbor retrieval
 ├── templates/                 # Frontend UI templates
 │   └── index.html             # Clean browser-based chat web app
 ├── app.py                     # Feature-rich backend (Agents, Tavily, Pinecone, Hybrid)
@@ -170,7 +183,7 @@ python -m venv .venv
 ### 2. Install Dependencies
 
 ```powershell
-pip install flask python-dotenv langchain-core langchain-groq langchain-classic langchain-community langchain-text-splitters requests langsmith pinecone-client
+pip install flask python-dotenv langchain-core langchain-groq langchain-classic langchain-community langchain-text-splitters requests langsmith pinecone-client neo4j sentence-transformers
 
 ```
 
@@ -184,8 +197,27 @@ PINECONE_API_KEY=your_pinecone_api_key
 TAVILY_API_KEY=your_tavily_api_key
 LANGSMITH_API_KEY=your_langsmith_api_key
 LANGSMITH_TRACING=true
+NEO4J_URI=bolt://localhost:7687
+NEO4J_USERNAME=neo4j
+NEO4J_PASSWORD=your_neo4j_password
+NEO4J_DATABASE=neo4j
+NEO4J_VECTOR_INDEX=chunk_embedding_index
 
 ```
+
+### Graph RAG retrieval
+
+Choose **Neo4j Graph RAG** in the chat retrieval picker. The application embeds the question with the same `all-MiniLM-L6-v2` model used by the Neo4j learning notebook, searches the `chunk_embedding_index` vector index, and passes matching chunk text to the answer model. If matching chunks have graph relationships, their directly connected nodes and relationship types are added as extra context. The response also includes the retrieved Neo4j chunks as sources, with similarity scores.
+
+**Concept:** ordinary vector RAG finds text passages that are semantically similar to a question. Graph RAG can extend those matches by following explicit links between entities, concepts, and passages, helping answer questions that depend on relationships rather than one passage alone. This implementation uses Neo4j vector search to find starting chunks, then optionally adds their directly connected nodes and relationship types to the answer context.
+
+Before using this option:
+
+1. Start a Neo4j database that supports vector indexes and set the connection variables shown above in `.env`.
+2. Run the ingestion and vector-index setup cells in [Knowledge Graph .ipynb](./Knowledge%20Graph%20.ipynb). The configured index must contain `Chunk` nodes with `embedding`, `text`, and optionally `topic` properties. Set `NEO4J_VECTOR_INDEX` if you use a different index name.
+3. Install the Python Neo4j driver (`neo4j`, included in the install command above) and start either Flask backend.
+
+The current notebook creates and vector-indexes `Chunk` nodes; it does not create semantic relationships between chunks. Graph-neighbor expansion is therefore optional and only adds extra context when relationships exist in the database. To get richer Graph RAG behavior, ingest entity nodes and explicit relationships as well. Neo4j configuration or query errors are returned to the chat rather than silently switching to a different index.
 
 ### 4. Run the Application
 
@@ -224,6 +256,7 @@ Open your browser and navigate to: `http://127.0.0.1:5000/`
 Since this is an active ongoing project, future updates will include:
 
 * [ ] Parent-Child / Multi-Vector Chunking strategies.
+* [ ] Build and evaluate a richer entity-and-relationship knowledge graph for Graph RAG.
 * [ ] Self-RAG & Corrective RAG (CRAG) feedback loops.
 * [ ] Semantic Caching layer to eliminate redundant LLM calls.
 * [ ] Full Docker & Docker-Compose setup for 1-click deployment.

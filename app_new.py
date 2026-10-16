@@ -1,6 +1,8 @@
 import os
 from flask import Flask, jsonify, render_template, request
 
+from graph_rag import format_graph_sources, retrieve_graph_chunks
+
 app = Flask(__name__)
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -21,6 +23,7 @@ def _normalize_vector_store(value):
         "faiss-ivfpq": "faiss-ivfpq",
         "faiss-pq": "faiss-pq",
         "pinecone": "pinecone",
+        "neo4j-graph": "neo4j-graph",
     }
     return mapping.get(value, "faiss-hnsw")
 
@@ -110,6 +113,20 @@ def chat():
         return jsonify({"error": "Missing user query"}), 400
 
     normalized_store = _normalize_vector_store(vector_store)
+    if normalized_store == "neo4j-graph":
+        try:
+            from langchain_community.embeddings import HuggingFaceEmbeddings
+
+            embeddings = HuggingFaceEmbeddings(
+                model_name="sentence-transformers/all-MiniLM-L6-v2"
+            )
+            chunks = retrieve_graph_chunks(user_query, embeddings)
+            sources = format_graph_sources(chunks, snippet_length=400)
+            answer = _generate_answer(user_query, sources, normalized_store)
+            return jsonify({"answer": answer, "sources": sources})
+        except (ImportError, RuntimeError, ValueError) as exc:
+            return jsonify({"error": f"Neo4j Graph RAG retrieval failed: {exc}"}), 503
+
     sources = _build_sources(user_query, normalized_store)
     answer = _generate_answer(user_query, sources, normalized_store)
 

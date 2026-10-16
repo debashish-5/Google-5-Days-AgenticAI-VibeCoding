@@ -36,6 +36,7 @@ from langchain_core.tools import tool
 from langchain_core.tools.retriever import create_retriever_tool
 from langsmith import traceable 
 from langchain_core.messages import HumanMessage
+from langchain_core.documents import Document
 from langchain_core.prompts import ChatPromptTemplate
 from sentence_transformers import CrossEncoder
 #for multiquery retriver 
@@ -49,6 +50,7 @@ from langchain_classic.retrievers.self_query.base import SelfQueryRetriever
 from langchain_classic.retrievers import ParentDocumentRetriever
 from langchain_community.docstore.in_memory import InMemoryDocstore
 from langchain_classic.storage import InMemoryStore
+from graph_rag import format_graph_chunk, format_graph_sources, retrieve_graph_chunks
 import faiss
 from langchain_community.document_loaders import PyPDFDirectoryLoader, PyPDFLoader
 from langchain_community.retrievers import BM25Retriever
@@ -1029,7 +1031,6 @@ class AgenticRAG:
             variants = [line.strip(" -0123456789.") for line in result.content.splitlines() if line.strip()]
             return variants[:count] or [question]
 
-
         @traceable(name="mode_retrieval")
         def run_retrieval_mode(question, index_name, mode, history):
             local_retriever = _local_retriever(index_name, 8 if mode in {"deep", "hardcore"} else 5)
@@ -1421,6 +1422,22 @@ def run_retrieval_mode(question, index_name, mode, history):
         answer = _answer_from_docs(question, retrieved, history, instruction)
     return {"answer": answer, "sources": _source_data(retrieved)}
 
+@traceable(name="neo4j_graph_rag")
+def run_graph_rag_mode(question, history):
+    chunks = retrieve_graph_chunks(question, retriever_llm.embeddings)
+    documents = []
+    for chunk in chunks:
+        topic, page_content = format_graph_chunk(chunk)
+        documents.append(Document(page_content=page_content, metadata={"source": f"Neo4j: {topic}"}))
+    answer = _answer_from_docs(
+        question,
+        documents,
+        history,
+        "Use graph relationships when present and distinguish retrieved facts from inference.",
+    )
+    return {"answer": answer, "sources": format_graph_sources(chunks)}
+
+
 @app.route('/chat', methods=['POST'])
 @traceable(name = "chat_endpoint")
 def chat():
@@ -1435,9 +1452,11 @@ def chat():
         return jsonify({"error": "Missing user query or vector store selection"}), 400
     if mode not in {"standard", "agentic", "deep", "hardcore"}:
         return jsonify({"error": "Unknown retrieval mode"}), 400
-    if faiss_model not in set(INDEX_FOLDERS) and faiss_model != "pinecone":
+    if faiss_model not in set(INDEX_FOLDERS) and faiss_model not in {"pinecone", "neo4j-graph"}:
         return jsonify({"error": "Unknown vector store selection"}), 400
     try:
+        if faiss_model == "neo4j-graph":
+            return jsonify(run_graph_rag_mode(user_query, history))
         if mode != "standard" or faiss_model != "pinecone":
             return jsonify(run_retrieval_mode(user_query, faiss_model, mode, history))
         if faiss_model == "faiss-hnsw":
